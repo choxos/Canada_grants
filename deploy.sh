@@ -54,39 +54,40 @@ else
 fi
 
 echo "4️⃣  Creating production settings..."
-cat > grants_project/settings_production.py << EOF
+cat > grants_project/settings_production.py << 'EOF'
 import os
+from decouple import config
 from .settings import *
 
 # Production settings
-DEBUG = False
-ALLOWED_HOSTS = ['$DOMAIN', 'www.$DOMAIN', 'localhost', '127.0.0.1']
+DEBUG = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost').split(',')
 
 # Database Configuration
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': '$DB_NAME',
-        'USER': '$DB_USER',
-        'PASSWORD': '$DB_PASS',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='5432'),
     }
 }
 
 # Security Settings
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '$(openssl rand -base64 50)')
-SECURE_SSL_REDIRECT = True
+SECRET_KEY = config('SECRET_KEY')
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=True, cast=bool)
+CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=True, cast=bool)
 
 # Static Files
-STATIC_ROOT = '$APP_DIR/staticfiles'
+STATIC_ROOT = config('STATIC_ROOT', default='/tmp/staticfiles')
 STATIC_URL = '/static/'
 
 # Media Files
-MEDIA_ROOT = '$APP_DIR/media'
+MEDIA_ROOT = config('MEDIA_ROOT', default='/tmp/media')
 MEDIA_URL = '/media/'
 
 # Logging
@@ -97,7 +98,7 @@ LOGGING = {
         'file': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': '$APP_DIR/logs/django.log',
+            'filename': config('LOG_FILE', default='/tmp/django.log'),
         },
     },
     'root': {
@@ -107,9 +108,33 @@ LOGGING = {
 EOF
 
 echo "5️⃣  Creating environment file..."
+SECRET_KEY_GENERATED=$(python3 -c "import secrets; print(secrets.token_urlsafe(50))")
+
 cat > .env << EOF
-DJANGO_SECRET_KEY=$(openssl rand -base64 50)
+# Django Settings
+SECRET_KEY=$SECRET_KEY_GENERATED
 DJANGO_SETTINGS_MODULE=grants_project.settings_production
+DEBUG=False
+
+# Database Configuration
+DB_NAME=$DB_NAME
+DB_USER=$DB_USER
+DB_PASSWORD=$DB_PASS
+DB_HOST=localhost
+DB_PORT=5432
+
+# Domain Configuration
+ALLOWED_HOSTS=$DOMAIN,www.$DOMAIN,localhost,127.0.0.1
+
+# Security Settings
+SECURE_SSL_REDIRECT=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+
+# File Paths
+STATIC_ROOT=$APP_DIR/staticfiles
+MEDIA_ROOT=$APP_DIR/media
+LOG_FILE=$APP_DIR/logs/django.log
 EOF
 
 echo "6️⃣  Creating necessary directories..."

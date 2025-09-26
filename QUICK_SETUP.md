@@ -62,6 +62,10 @@ cd /home/cgt
 git clone https://github.com/[YOUR_USERNAME]/Canada_grants.git
 cd Canada_grants
 
+# Configure environment variables (secure approach)
+cp env.example .env
+nano .env  # Update with your actual values
+
 # Run deployment script
 ./deploy.sh
 ```
@@ -69,11 +73,16 @@ cd Canada_grants
 The deploy script will automatically:
 - ✅ Create Python virtual environment
 - ✅ Install dependencies
-- ✅ Configure Django settings
+- ✅ Configure Django settings (using environment variables)
 - ✅ Setup Gunicorn
 - ✅ Configure Supervisor
 - ✅ Setup Nginx
 - ✅ Create backup scripts
+
+**🔒 Security Benefits:**
+- Database passwords stored in .env (not in code)
+- Secret keys generated uniquely for each deployment  
+- Environment variables never committed to Git
 
 ---
 

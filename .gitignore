@@ -18,10 +18,16 @@ db.sqlite3-journal
 media/
 staticfiles/
 
-# Environment variables
+# Environment variables - NEVER commit these files!
 .env
 .env.local
 .env.production
+.env.development
+.environment
+local_settings.py
+
+# Allow .env.example (template file)
+!.env.example
 
 # IDE
 .vscode/

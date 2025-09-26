@@ -93,9 +93,8 @@ psql -h localhost -U cgt_user -d cgt_production
 
 ### 4.1 Clone Repository
 ```bash
-cd /home/cgt
-git clone https://github.com/[YOUR_USERNAME]/Canada_grants.git
-cd Canada_grants
+cd /var/www/cgt
+git clone https://github.com/choxos/Canada_grants.git .
 ```
 
 ### 4.2 Create Python Virtual Environment
@@ -120,7 +119,7 @@ pip install psycopg2-binary gunicorn
 cp grants_project/settings.py grants_project/settings_production.py
 ```
 
-### 5.2 Edit Production Settings
+### 5.2 Create Production Settings
 ```bash
 nano grants_project/settings_production.py
 ```
@@ -129,37 +128,38 @@ Add/modify the following:
 
 ```python
 import os
+from decouple import config
 from .settings import *
 
 # Production settings
-DEBUG = False
-ALLOWED_HOSTS = ['cgt.xeradb.com', 'www.cgt.xeradb.com', 'localhost', '127.0.0.1']
+DEBUG = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='cgt.xeradb.com,www.cgt.xeradb.com,localhost,127.0.0.1').split(',')
 
 # Database Configuration
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'cgt_production',
-        'USER': 'cgt_user',
-        'PASSWORD': 'Choxos10203040',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='5432'),
     }
 }
 
 # Security Settings
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'your-super-secret-key-here')
-SECURE_SSL_REDIRECT = True
+SECRET_KEY = config('SECRET_KEY')
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=True, cast=bool)
+CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=True, cast=bool)
 
 # Static Files
-STATIC_ROOT = '/home/cgt/Canada_grants/staticfiles'
+STATIC_ROOT = config('STATIC_ROOT', default='/home/cgt/Canada_grants/staticfiles')
 STATIC_URL = '/static/'
 
 # Media Files
-MEDIA_ROOT = '/home/cgt/Canada_grants/media'
+MEDIA_ROOT = config('MEDIA_ROOT', default='/home/cgt/Canada_grants/media')
 MEDIA_URL = '/media/'
 
 # Logging
@@ -170,7 +170,7 @@ LOGGING = {
         'file': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': '/home/cgt/Canada_grants/logs/django.log',
+            'filename': config('LOG_FILE', default='/home/cgt/Canada_grants/logs/django.log'),
         },
     },
     'root': {
@@ -181,14 +181,46 @@ LOGGING = {
 
 ### 5.3 Create Environment File
 ```bash
+# Copy the example file and customize it
+cp env.example .env
 nano .env
 ```
 
-Add:
-```
-DJANGO_SECRET_KEY=your-super-secret-production-key-here-make-it-long-and-random
+Update the .env file with your actual values:
+```bash
+# Django Settings
+SECRET_KEY=your-super-secret-production-key-here-make-it-long-and-random-50-characters
 DJANGO_SETTINGS_MODULE=grants_project.settings_production
+DEBUG=False
+
+# Database Configuration
+DB_NAME=cgt_production
+DB_USER=cgt_user
+DB_PASSWORD=Choxos10203040
+DB_HOST=localhost
+DB_PORT=5432
+
+# Domain Configuration
+ALLOWED_HOSTS=cgt.xeradb.com,www.cgt.xeradb.com,localhost,127.0.0.1
+
+# Security Settings
+SECURE_SSL_REDIRECT=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+
+# File Paths
+STATIC_ROOT=/home/cgt/Canada_grants/staticfiles
+MEDIA_ROOT=/home/cgt/Canada_grants/media
+LOG_FILE=/home/cgt/Canada_grants/logs/django.log
 ```
+
+**⚠️ Security Notes**: 
+- Generate a unique SECRET_KEY:
+  ```bash
+  python -c "import secrets; print(secrets.token_urlsafe(50))"
+  ```
+- Never commit the .env file to version control
+- The env.example file shows the required structure without sensitive values
 
 ### 5.4 Create Directories
 ```bash
