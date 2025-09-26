@@ -3,8 +3,8 @@
 # Update Map - Switch from Leaflet to Plotly
 # Run this script on your VPS to get the new Plotly choropleth map
 
-echo "🗺️  Updating World Map - Fix JavaScript Scope Error"
-echo "===================================================="
+echo "🗺️  Updating World Map - Fix Plotly Loading Issues"
+echo "=================================================="
 
 # Make sure we're in the right directory
 cd /home/cgt/Canada_grants
@@ -26,17 +26,20 @@ sudo supervisorctl status cgt
 echo ""
 echo "🎉 Map Update Complete!"
 echo ""
-echo "🐛 JavaScript Error Fixed:"
-echo "   ✅ Resolved 'countryData is not defined' error"
-echo "   ✅ Fixed function scope issue with Plotly map"
-echo "   ✅ Map now loads without console errors"
+echo "🔧 Plotly Loading Issues Fixed:"
+echo "   ✅ Resolved 'Plotly is not defined' error"  
+echo "   ✅ Added CDN fallback mechanism (plot.ly → jsdelivr)"
+echo "   ✅ Robust library loading detection (5s timeout)"
+echo "   ✅ Graceful error handling with retry options"
+echo "   ✅ Works with ad blockers and network restrictions"
 echo ""
-echo "🗺️  Plotly Map Features:"
-echo "   ✅ Interactive choropleth visualization"
-echo "   ✅ Hover tooltips with funding details"
-echo "   ✅ Color-coded countries by funding level"
-echo "   ✅ Export functionality (PNG download)"
-echo "   ✅ Professional styling with ocean/land contrast"
+echo "🗺️  Map Features Now Working:"
+echo "   ✅ Interactive world choropleth visualization"
+echo "   ✅ Country hover tooltips with funding details"
+echo "   ✅ Color-coded funding levels ($0 to $1B+)"
+echo "   ✅ Export to PNG functionality"
+echo "   ✅ Professional ocean/coastline styling"
+echo "   ✅ Reliable loading across network conditions"
 echo ""
 echo "🌐 Visit your statistics page: https://cgt.xeradb.com/global-affairs/statistics/"
-echo "📊 The map should now display properly without errors!"
+echo "📊 The map should now load reliably without JavaScript errors!"
