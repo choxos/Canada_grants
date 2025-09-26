@@ -385,7 +385,7 @@ def gac_statistics(request):
         item['total_value'] = float(item['total_value'] or 0)
         item['avg_value'] = float(item['avg_value'] or 0)
     
-    # Top countries
+    # Top countries (temporarily include blank to diagnose the issue)
     country_data = list(grants.values('country').annotate(
         count=Count('id'),
         total_value=Sum('maximum_contribution')

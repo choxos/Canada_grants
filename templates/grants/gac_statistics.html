@@ -401,6 +401,26 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('📊 Creating world map with', countryData.length, 'countries');
         console.log('🔍 Sample country data:', countryData.slice(0, 3));
         
+        // Debug: Check for blank countries and show their impact
+        const blankCountry = countryData.find(c => !c.country || c.country.trim() === '');
+        if (blankCountry) {
+            console.warn('🚨 Found blank country entry:', blankCountry);
+            console.warn('💸 Blank country total: $' + (blankCountry.total_value/1000000).toFixed(1) + 'M with ' + blankCountry.count + ' grants');
+        }
+        
+        // Debug: Show funding value range
+        const values = countryData.map(c => c.total_value / 1000000);
+        const minFunding = Math.min(...values);
+        const maxFunding = Math.max(...values);
+        console.log('💰 Funding range: $' + minFunding.toFixed(1) + 'M - $' + maxFunding.toFixed(1) + 'M');
+        
+        // Show top 5 countries by funding for comparison
+        const sortedByValue = [...countryData].sort((a, b) => b.total_value - a.total_value);
+        console.log('🏆 Top 5 countries by funding:');
+        sortedByValue.slice(0, 5).forEach((c, i) => {
+            console.log(`${i+1}. ${c.country || '[BLANK]'}: $${(c.total_value/1000000).toFixed(1)}M (${c.count} grants)`);
+        });
+        
         // Map country names to what Plotly expects
         function mapCountryName(countryName) {
             const mapping = {
