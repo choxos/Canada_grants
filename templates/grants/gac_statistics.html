@@ -4,65 +4,8 @@
 {% block title %}Global Affairs Canada - Statistics{% endblock %}
 
 {% block extra_head %}
-<script>
-// Multiple CDN fallback system with detailed diagnostics
-window.plotlyLoadingAttempts = [];
-window.plotlyLoadingStatus = 'starting';
-
-function loadPlotlyWithFallback() {
-    const cdnSources = [
-        'https://cdn.plot.ly/plotly-latest.min.js',
-        'https://cdn.jsdelivr.net/npm/plotly.js-dist@latest/plotly.min.js',
-        'https://unpkg.com/plotly.js-dist@latest/plotly.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js'
-    ];
-    
-    let currentCdnIndex = 0;
-    
-    function tryNextCdn() {
-        if (currentCdnIndex >= cdnSources.length) {
-            console.error('❌ All Plotly CDNs failed to load');
-            window.plotlyLoadingStatus = 'all_failed';
-            return;
-        }
-        
-        const cdnUrl = cdnSources[currentCdnIndex];
-        const attemptInfo = {
-            index: currentCdnIndex + 1,
-            url: cdnUrl,
-            timestamp: Date.now()
-        };
-        
-        console.log(`🔄 Trying Plotly CDN ${attemptInfo.index}/4: ${cdnUrl}`);
-        window.plotlyLoadingAttempts.push(attemptInfo);
-        
-        const script = document.createElement('script');
-        script.src = cdnUrl;
-        
-        script.onload = function() {
-            attemptInfo.status = 'loaded';
-            attemptInfo.loadTime = Date.now() - attemptInfo.timestamp;
-            console.log(`✅ Plotly CDN ${attemptInfo.index} loaded successfully in ${attemptInfo.loadTime}ms`);
-            window.plotlyLoadingStatus = 'loaded';
-        };
-        
-        script.onerror = function() {
-            attemptInfo.status = 'failed';
-            attemptInfo.loadTime = Date.now() - attemptInfo.timestamp;
-            console.warn(`❌ Plotly CDN ${attemptInfo.index} failed after ${attemptInfo.loadTime}ms`);
-            currentCdnIndex++;
-            tryNextCdn();
-        };
-        
-        document.head.appendChild(script);
-    }
-    
-    tryNextCdn();
-}
-
-// Start loading immediately
-loadPlotlyWithFallback();
-</script>
+<!-- Use specific Plotly.js version that works (same as democracy-analysis) -->
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.24.1/plotly.min.js"></script>
 <style>
     .plotly-graph-div {
         border-radius: 8px;
@@ -403,200 +346,71 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('GAC Statistics charts initialized successfully!');
     
-    // Initialize World Choropleth Map with Plotly (wait for library to load)
-    waitForPlotlyAndInit();
+    // Initialize World Choropleth Map with Plotly (simple approach)
+    initPlotlyWorldMap();
     
-    // Wait for Plotly library to load before initializing map
-    function waitForPlotlyAndInit() {
-        let attempts = 0;
-        const maxAttempts = 100; // 10 seconds max wait (longer for multiple CDN attempts)
-        
-        function checkPlotly() {
-            if (typeof Plotly !== 'undefined') {
-                console.log('✅ Plotly library is ready - initializing map');
-                initPlotlyWorldMap();
-                return;
-            }
-            
-            // Check if all CDNs have been tried and failed
-            if (window.plotlyLoadingStatus === 'all_failed') {
-                console.error('❌ All Plotly CDNs failed to load');
-                showPlotlyError();
-                return;
-            }
-            
-            // Continue waiting if CDNs are still being tried or loaded
-            if (attempts < maxAttempts) {
-                attempts++;
-                setTimeout(checkPlotly, 100);
-            } else {
-                console.error('❌ Plotly loading timed out after 10 seconds');
-                console.log('🔍 Loading attempts:', window.plotlyLoadingAttempts);
-                console.log('📊 Final loading status:', window.plotlyLoadingStatus);
-                showPlotlyError();
-            }
-        }
-        
-        checkPlotly();
-    }
-    
-    // Show error message if Plotly fails to load
-    function showPlotlyError() {
-        const attemptCount = window.plotlyLoadingAttempts.length;
-        const failedCdns = window.plotlyLoadingAttempts
-            .filter(attempt => attempt.status === 'failed')
-            .map(attempt => attempt.url.split('/')[2]) // Extract domain
-            .join(', ');
-        
-        document.getElementById('worldMap').innerHTML = 
-            '<div class="alert alert-warning text-center m-4">' +
-            '<i class="fas fa-exclamation-triangle"></i> ' +
-            '<strong>Map Visualization Unavailable</strong><br>' +
-            `Unable to load interactive map after trying ${attemptCount} CDN(s).` +
-            '<br><small class="text-muted">This may be due to network restrictions, ad blockers, or firewall settings.</small>' +
-            '<br><br><button class="btn btn-primary btn-sm me-2" onclick="location.reload()">Try Again</button>' +
-            '<button class="btn btn-secondary btn-sm" onclick="showDiagnostics()">Show Diagnostics</button>' +
-            '<div id="diagnostics" class="mt-3" style="display:none;">' +
-            '<small class="text-muted">' +
-            '<strong>Attempted CDNs:</strong><br>' +
-            window.plotlyLoadingAttempts.map(attempt => 
-                `• ${attempt.url.split('/')[2]}: ${attempt.status || 'trying'} (${attempt.loadTime || '?'}ms)`
-            ).join('<br>') +
-            '</small></div>' +
-            '</div>';
-    }
-    
-    // Make showDiagnostics globally available for onclick
-    window.showDiagnostics = function() {
-        const diagnostics = document.getElementById('diagnostics');
-        if (diagnostics) {
-            diagnostics.style.display = diagnostics.style.display === 'none' ? 'block' : 'none';
-        }
-    };
-    
-    // Plotly World Choropleth Map (moved inside DOMContentLoaded to access data)
+    // Plotly World Choropleth Map
     function initPlotlyWorldMap() {
         console.log('🗺️ Initializing Plotly world map...');
         
-        // Prepare data for Plotly
-        const countries = [];
-        const values = [];
-        const hoverText = [];
-        const countCounts = [];
-    
-    countryData.forEach(item => {
-        let countryName = item.country.trim();
-        
-        // Handle common country name variations for Plotly
-        if (countryName === 'Democratic Republic of the Congo') countryName = 'Congo, Democratic Republic of the';
-        if (countryName === 'Republic of the Congo') countryName = 'Congo, Republic of the';
-        if (countryName === 'United States of America') countryName = 'United States';
-        if (countryName === 'Russian Federation') countryName = 'Russia';
-        if (countryName === 'United Kingdom') countryName = 'United Kingdom';
-        if (countryName === 'South Korea') countryName = 'Korea, South';
-        if (countryName === 'North Korea') countryName = 'Korea, North';
-        if (countryName === 'Czech Republic') countryName = 'Czechia';
-        if (countryName === 'Republic of Korea') countryName = 'Korea, South';
-        if (countryName === 'Ivory Coast') countryName = 'Cote d\'Ivoire';
-        if (countryName === 'Myanmar') countryName = 'Burma';
-        if (countryName === 'Swaziland') countryName = 'Eswatini';
-        
-        countries.push(countryName);
-        values.push(item.total_value);
-        countCounts.push(item.count);
-        hoverText.push(
-            `<b>${item.country}</b><br>` +
-            `Funding: $${(item.total_value/1000000).toFixed(1)}M CAD<br>` +
-            `Grants: ${item.count.toLocaleString()}`
-        );
-    });
-    
-    const data = [{
-        type: 'choropleth',
-        locationmode: 'country names',
-        locations: countries,
-        z: values,
-        hovertemplate: hoverText.map(text => text + '<extra></extra>'),
-        colorscale: [
-            [0, '#f7f7f7'],      // Very light gray for no/minimal funding
-            [0.1, '#fee5d9'],    // Light orange
-            [0.3, '#fcbba1'],    // Medium light orange
-            [0.5, '#fc9272'],    // Medium orange
-            [0.7, '#fb6a4a'],    // Medium dark orange
-            [1, '#de2d26']       // Dark red for highest funding
-        ],
-        colorbar: {
-            title: {
-                text: 'Funding Amount<br>(CAD)',
-                font: { size: 12 }
-            },
-            tickmode: 'array',
-            tickvals: [0, 10000000, 50000000, 100000000, 500000000, 1000000000],
-            ticktext: ['$0', '$10M', '$50M', '$100M', '$500M', '$1B+'],
-            x: 1.02,
-            len: 0.8
-        },
-        marker: {
-            line: {
-                color: 'rgb(180,180,180)',
-                width: 0.5
-            }
-        }
-    }];
-    
-    const layout = {
-        title: {
-            text: 'Canadian International Development Funding by Country',
-            font: { size: 16 },
-            x: 0.5,
-            xanchor: 'center'
-        },
-        geo: {
-            showframe: false,
-            showcoastlines: true,
-            coastlinecolor: 'rgb(180,180,180)',
-            showland: true,
-            landcolor: 'rgb(243, 243, 243)',
-            showocean: true,
-            oceancolor: 'rgb(230, 245, 255)',
-            projection: {
-                type: 'natural earth'
-            }
-        },
-        font: {
-            family: 'Arial, sans-serif',
-            size: 12
-        },
-        margin: { t: 60, r: 20, b: 20, l: 20 },
-        height: 600
-    };
-    
-    const config = {
-        responsive: true,
-        displayModeBar: true,
-        modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
-        displaylogo: false,
-        toImageButtonOptions: {
-            format: 'png',
-            filename: 'canada-gac-world-funding-map',
-            height: 600,
-            width: 1200,
-            scale: 2
-        }
-    };
-    
-    Plotly.newPlot('worldMap', data, layout, config)
-        .then(() => {
-            console.log('✅ Plotly world choropleth map loaded successfully!');
-        })
-        .catch(error => {
-            console.error('❌ Error loading Plotly world map:', error);
+        // Simple check if Plotly is available
+        if (typeof Plotly === 'undefined') {
+            console.error('❌ Plotly library not loaded');
             document.getElementById('worldMap').innerHTML = 
-                '<div class="alert alert-danger text-center m-4">' +
+                '<div class="alert alert-warning text-center m-4">' +
                 '<i class="fas fa-exclamation-triangle"></i> ' +
-                'Unable to load world map visualization. Please refresh the page or contact support.' +
+                '<strong>Map Library Not Available</strong><br>' +
+                'Unable to load the interactive map. Please refresh the page.' +
+                '<br><br><button class="btn btn-primary btn-sm" onclick="location.reload()">Refresh Page</button>' +
                 '</div>';
-        });
+            return;
+        }
+        
+        // Safety check for data (like democracy-analysis does)
+        if (!countryData || !Array.isArray(countryData) || countryData.length === 0) {
+            console.error('Invalid world map data structure:', countryData);
+            document.getElementById('worldMap').innerHTML = 
+                '<div class="alert alert-warning">No data available for world map</div>';
+            return;
+        }
+        
+        console.log('📊 Creating world map with', countryData.length, 'countries');
+        
+        // Create plot data - simple approach like democracy-analysis
+        const plotData = [{
+            type: 'choropleth',
+            locations: countryData.map(c => c.country),
+            z: countryData.map(c => c.total_value / 1000000), // Convert to millions
+            text: countryData.map(c => 
+                `Country: ${c.country}<br>Funding: $${(c.total_value/1000000).toFixed(1)}M CAD<br>Grants: ${c.count}`
+            ),
+            colorscale: [
+                [0, 'rgb(247, 251, 255)'],   // Very light blue
+                [0.5, 'rgb(8, 81, 156)'],    // Medium blue
+                [1, 'rgb(8, 48, 107)']       // Dark blue
+            ],
+            colorbar: {
+                title: 'Funding (Millions CAD)',
+                titlefont: { size: 14 }
+            }
+        }];
+        
+        const layout = {
+            title: {
+                text: 'Global Affairs Canada Funding by Country',
+                font: { size: 18, weight: 'bold' }
+            },
+            geo: {
+                showframe: false,
+                showcoastlines: true,
+                projection: { type: 'natural earth' }
+            },
+            margin: { t: 50, b: 0, l: 0, r: 0 }
+        };
+        
+        // Use the same simple call as democracy-analysis
+        Plotly.newPlot('worldMap', plotData, layout, {responsive: true});
+        console.log('✅ Plotly world map created successfully!');
     }
 });
 </script>
