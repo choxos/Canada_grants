@@ -347,10 +347,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize World Choropleth Map with Plotly
     initPlotlyWorldMap();
-});
-
-// Plotly World Choropleth Map
-function initPlotlyWorldMap() {
+    
+    // Plotly World Choropleth Map (moved inside DOMContentLoaded to access data)
+    function initPlotlyWorldMap() {
     // Prepare data for Plotly
     const countries = [];
     const values = [];
@@ -470,6 +469,7 @@ function initPlotlyWorldMap() {
                 'Unable to load world map visualization. Please refresh the page or contact support.' +
                 '</div>';
         });
-}
+    }
+});
 </script>
 {% endblock %}
