@@ -399,25 +399,60 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         console.log('📊 Creating world map with', countryData.length, 'countries');
+        console.log('🔍 Sample country data:', countryData.slice(0, 3));
         
-        // Create plot data - simple approach like democracy-analysis
+        // Map country names to what Plotly expects
+        function mapCountryName(countryName) {
+            const mapping = {
+                'United States': 'United States of America',
+                'USA': 'United States of America',
+                'UK': 'United Kingdom',
+                'Russia': 'Russian Federation',
+                'South Korea': 'Korea, Republic of',
+                'North Korea': 'Korea, Democratic People\'s Republic of',
+                'Iran': 'Iran, Islamic Republic of',
+                'Syria': 'Syrian Arab Republic',
+                'Venezuela': 'Venezuela, Bolivarian Republic of',
+                'Bolivia': 'Bolivia, Plurinational State of',
+                'Tanzania': 'Tanzania, United Republic of',
+                'Congo': 'Congo, Republic of the',
+                'DR Congo': 'Congo, Democratic Republic of the',
+                'Democratic Republic of the Congo': 'Congo, Democratic Republic of the',
+                'Czech Republic': 'Czechia',
+                'Macedonia': 'North Macedonia',
+                'Myanmar': 'Burma',
+                'Ivory Coast': 'Cote d\'Ivoire',
+                'Swaziland': 'Eswatini'
+            };
+            
+            return mapping[countryName] || countryName;
+        }
+        
+        // Create plot data with improved country name mapping
         const plotData = [{
             type: 'choropleth',
-            locations: countryData.map(c => c.country),
+            locationmode: 'country names',
+            locations: countryData.map(c => mapCountryName(c.country)),
             z: countryData.map(c => c.total_value / 1000000), // Convert to millions
             text: countryData.map(c => 
                 `Country: ${c.country}<br>Funding: $${(c.total_value/1000000).toFixed(1)}M CAD<br>Grants: ${c.count}`
             ),
+            hovertemplate: '%{text}<extra></extra>',
             colorscale: [
-                [0, 'rgb(247, 251, 255)'],   // Very light blue
-                [0.5, 'rgb(8, 81, 156)'],    // Medium blue
-                [1, 'rgb(8, 48, 107)']       // Dark blue
+                [0, '#f0f9ff'],      // Very light blue
+                [0.2, '#bae6fd'],    // Light blue  
+                [0.4, '#7dd3fc'],    // Sky blue
+                [0.6, '#38bdf8'],    // Medium blue
+                [0.8, '#0ea5e9'],    // Blue
+                [1, '#0369a1']       // Dark blue
             ],
             colorbar: {
                 title: 'Funding (Millions CAD)',
                 titlefont: { size: 14 }
             }
         }];
+        
+        console.log('🗺️ Mapped locations:', plotData[0].locations.slice(0, 5));
         
         const layout = {
             title: {
