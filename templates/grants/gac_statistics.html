@@ -4,8 +4,8 @@
 {% block title %}Global Affairs Canada - Statistics{% endblock %}
 
 {% block extra_head %}
-<!-- Use specific Plotly.js version that works (same as democracy-analysis) -->
-<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.24.1/plotly.min.js"></script>
+<!-- Try cdnjs (Cloudflare) - often works when others don't -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.24.1/plotly.min.js"></script>
 <style>
     .plotly-graph-div {
         border-radius: 8px;
@@ -346,25 +346,51 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('GAC Statistics charts initialized successfully!');
     
-    // Initialize World Choropleth Map with Plotly (simple approach)
-    initPlotlyWorldMap();
+    // Initialize World Choropleth Map with Plotly (with delay to ensure library loads)
+    setTimeout(initPlotlyWorldMap, 500);
     
     // Plotly World Choropleth Map
     function initPlotlyWorldMap() {
         console.log('🗺️ Initializing Plotly world map...');
+        console.log('🔍 Checking Plotly availability:', typeof Plotly);
         
-        // Simple check if Plotly is available
+        // Check if Plotly is available
         if (typeof Plotly === 'undefined') {
-            console.error('❌ Plotly library not loaded');
-            document.getElementById('worldMap').innerHTML = 
-                '<div class="alert alert-warning text-center m-4">' +
-                '<i class="fas fa-exclamation-triangle"></i> ' +
-                '<strong>Map Library Not Available</strong><br>' +
-                'Unable to load the interactive map. Please refresh the page.' +
-                '<br><br><button class="btn btn-primary btn-sm" onclick="location.reload()">Refresh Page</button>' +
-                '</div>';
+            console.error('❌ Plotly library not loaded from CDN');
+            console.log('💡 Trying to wait a bit more and retry...');
+            
+            // Try waiting a bit more for slow connections
+            setTimeout(function() {
+                console.log('🔍 Retrying Plotly check:', typeof Plotly);
+                if (typeof Plotly !== 'undefined') {
+                    console.log('✅ Plotly loaded on retry - initializing map');
+                    createPlotlyMap();
+                } else {
+                    console.error('❌ Plotly still not available after retry');
+                    showMapError();
+                }
+            }, 2000);
             return;
         }
+        
+        console.log('✅ Plotly library ready - creating map');
+        createPlotlyMap();
+    }
+    
+    // Show map error message
+    function showMapError() {
+        document.getElementById('worldMap').innerHTML = 
+            '<div class="alert alert-warning text-center m-4">' +
+            '<i class="fas fa-exclamation-triangle"></i> ' +
+            '<strong>Map Library Loading Issue</strong><br>' +
+            'Unable to load Plotly.js from CDN. This may be due to network restrictions.' +
+            '<br><small class="text-muted">CDN: cdnjs.cloudflare.com (Plotly v2.24.1)</small>' +
+            '<br><br><button class="btn btn-primary btn-sm" onclick="location.reload()">Try Again</button>' +
+            '</div>';
+    }
+    
+    // Create the actual Plotly map
+    function createPlotlyMap() {
         
         // Safety check for data (like democracy-analysis does)
         if (!countryData || !Array.isArray(countryData) || countryData.length === 0) {
