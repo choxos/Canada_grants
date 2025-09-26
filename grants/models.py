@@ -89,7 +89,7 @@ class GlobalAffairsGrant(models.Model):
     ]
     
     # Basic Information
-    project_number = models.CharField(max_length=50, unique=True)
+    project_number = models.CharField(max_length=100, unique=True)  # Increased from 50
     date_modified = models.DateField()
     title = models.TextField()
     description = models.TextField()
@@ -101,13 +101,13 @@ class GlobalAffairsGrant(models.Model):
     
     # Geographic Information
     country = models.TextField()  # Can include multiple countries with percentages
-    region = models.CharField(max_length=200, blank=True)
+    region = models.CharField(max_length=500, blank=True)  # Increased from 200
     locations = models.TextField(blank=True)  # Geographic coordinates and location data
     
     # Partners and Implementation
     executing_agency_partner = models.TextField(blank=True)
     contributing_organization = models.TextField(blank=True)
-    reporting_organization = models.CharField(max_length=100, default='Global Affairs Canada')
+    reporting_organization = models.CharField(max_length=200, default='Global Affairs Canada')  # Increased from 100
     
     # Financial Information
     maximum_contribution = models.DecimalField(max_digits=15, decimal_places=2)
@@ -118,11 +118,11 @@ class GlobalAffairsGrant(models.Model):
     dac_sector = models.TextField()  # Development Assistance Committee sector classification
     
     # Development Aid Classification
-    aid_type = models.CharField(max_length=100, blank=True)
-    collaboration_type = models.CharField(max_length=50, blank=True)
-    finance_type = models.CharField(max_length=100, blank=True)
-    flow_type = models.CharField(max_length=50, blank=True)
-    selection_mechanism = models.CharField(max_length=100, blank=True)
+    aid_type = models.CharField(max_length=200, blank=True)  # Increased from 100
+    collaboration_type = models.CharField(max_length=200, blank=True)  # Increased from 50
+    finance_type = models.CharField(max_length=200, blank=True)  # Increased from 100
+    flow_type = models.CharField(max_length=200, blank=True)  # Increased from 50
+    selection_mechanism = models.CharField(max_length=200, blank=True)  # Increased from 100
     
     # Results and Impact
     expected_results = models.TextField(blank=True)
@@ -130,7 +130,7 @@ class GlobalAffairsGrant(models.Model):
     
     # Policy and Strategy
     policy_markers = models.TextField(blank=True)  # Cross-cutting themes
-    alternate_im_position = models.CharField(max_length=100, blank=True)
+    alternate_im_position = models.CharField(max_length=300, blank=True)  # Increased from 100
     other_identifier = models.TextField(blank=True)
     
     # Metadata
