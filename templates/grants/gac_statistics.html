@@ -4,7 +4,30 @@
 {% block title %}Global Affairs Canada - Statistics{% endblock %}
 
 {% block extra_head %}
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js" onerror="plotlyFallback()"></script>
+<script>
+function plotlyFallback() {
+    console.log('Primary Plotly CDN failed, trying fallback...');
+    var script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/plotly.js-dist@latest/plotly.min.js';
+    script.onerror = function() {
+        console.log('Plotly fallback also failed, showing error message...');
+        setTimeout(function() {
+            var mapDiv = document.getElementById('worldMap');
+            if (mapDiv) {
+                mapDiv.innerHTML = 
+                    '<div class="alert alert-warning text-center m-4">' +
+                    '<i class="fas fa-exclamation-triangle"></i> ' +
+                    '<strong>Map Library Loading Issue</strong><br>' +
+                    'The interactive map requires an internet connection to load visualization libraries. ' +
+                    'Please check your connection and refresh the page.' +
+                    '</div>';
+            }
+        }, 1000);
+    };
+    document.head.appendChild(script);
+}
+</script>
 <style>
     .plotly-graph-div {
         border-radius: 8px;
@@ -345,16 +368,50 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('GAC Statistics charts initialized successfully!');
     
-    // Initialize World Choropleth Map with Plotly
-    initPlotlyWorldMap();
+    // Initialize World Choropleth Map with Plotly (wait for library to load)
+    waitForPlotlyAndInit();
+    
+    // Wait for Plotly library to load before initializing map
+    function waitForPlotlyAndInit() {
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max wait
+        
+        function checkPlotly() {
+            if (typeof Plotly !== 'undefined') {
+                console.log('✅ Plotly library loaded successfully');
+                initPlotlyWorldMap();
+            } else if (attempts < maxAttempts) {
+                attempts++;
+                setTimeout(checkPlotly, 100);
+            } else {
+                console.error('❌ Plotly library failed to load after 5 seconds');
+                showPlotlyError();
+            }
+        }
+        
+        checkPlotly();
+    }
+    
+    // Show error message if Plotly fails to load
+    function showPlotlyError() {
+        document.getElementById('worldMap').innerHTML = 
+            '<div class="alert alert-warning text-center m-4">' +
+            '<i class="fas fa-exclamation-triangle"></i> ' +
+            '<strong>Map Visualization Unavailable</strong><br>' +
+            'Unable to load the interactive map. This may be due to network restrictions or ad blockers.' +
+            '<br><br><button class="btn btn-primary btn-sm" onclick="location.reload()">Try Again</button>' +
+            '</div>';
+    }
     
     // Plotly World Choropleth Map (moved inside DOMContentLoaded to access data)
     function initPlotlyWorldMap() {
-    // Prepare data for Plotly
-    const countries = [];
-    const values = [];
-    const hoverText = [];
-    const countCounts = [];
+        console.log('🗺️ Initializing Plotly world map...');
+        
+        // Prepare data for Plotly
+        const countries = [];
+        const values = [];
+        const hoverText = [];
+        const countCounts = [];
     
     countryData.forEach(item => {
         let countryName = item.country.trim();
