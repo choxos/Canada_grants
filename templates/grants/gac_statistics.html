@@ -4,14 +4,11 @@
 {% block title %}Global Affairs Canada - Statistics{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <style>
-    .leaflet-popup-content {
-        font-size: 14px;
-        line-height: 1.4;
-    }
-    .leaflet-popup-content-wrapper {
+    .plotly-graph-div {
         border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 </style>
 {% endblock %}
@@ -135,43 +132,12 @@
                 <small class="text-muted">Choropleth map showing Canadian funding by country</small>
             </div>
             <div class="card-body">
-                <div id="worldMap" style="height: 500px; width: 100%;"></div>
+                <div id="worldMap" style="height: 600px; width: 100%;"></div>
                 <div class="mt-3">
                     <small class="text-muted">
                         <i class="fas fa-info-circle"></i> 
-                        Darker colors indicate higher funding amounts. Click on a country for detailed information.
+                        Interactive choropleth map showing Canadian funding by country. Hover over countries for details.
                     </small>
-                    <div class="row mt-2">
-                        <div class="col-md-12">
-                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                <span style="font-size: 12px;">Funding Level:</span>
-                                <div style="display: flex; align-items: center; gap: 5px;">
-                                    <span style="width: 20px; height: 15px; background: #fee5d9; border: 1px solid #ddd;"></span>
-                                    <span style="font-size: 11px;">$0-1M</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 5px;">
-                                    <span style="width: 20px; height: 15px; background: #fcbba1; border: 1px solid #ddd;"></span>
-                                    <span style="font-size: 11px;">$1-10M</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 5px;">
-                                    <span style="width: 20px; height: 15px; background: #fc9272; border: 1px solid #ddd;"></span>
-                                    <span style="font-size: 11px;">$10-50M</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 5px;">
-                                    <span style="width: 20px; height: 15px; background: #fb6a4a; border: 1px solid #ddd;"></span>
-                                    <span style="font-size: 11px;">$50-100M</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 5px;">
-                                    <span style="width: 20px; height: 15px; background: #de2d26; border: 1px solid #ddd;"></span>
-                                    <span style="font-size: 11px;">$100M+</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 5px;">
-                                    <span style="width: 20px; height: 15px; background: #f0f0f0; border: 1px solid #ddd;"></span>
-                                    <span style="font-size: 11px;">No funding</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -379,128 +345,131 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('GAC Statistics charts initialized successfully!');
     
-    // Initialize World Map
-    initWorldMap();
+    // Initialize World Choropleth Map with Plotly
+    initPlotlyWorldMap();
 });
 
-// World Choropleth Map
-function initWorldMap() {
-    // Create map
-    const map = L.map('worldMap').setView([20, 0], 2);
+// Plotly World Choropleth Map
+function initPlotlyWorldMap() {
+    // Prepare data for Plotly
+    const countries = [];
+    const values = [];
+    const hoverText = [];
+    const countCounts = [];
     
-    // Add base map
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-    
-    // Prepare country funding data
-    const fundingData = {};
     countryData.forEach(item => {
-        // Clean country name and normalize for matching
         let countryName = item.country.trim();
-        // Handle common variations
-        if (countryName === 'Democratic Republic of the Congo') countryName = 'Democratic Republic of Congo';
-        if (countryName === 'Republic of the Congo') countryName = 'Republic of Congo';
-        if (countryName === 'United States of America') countryName = 'United States';
-        if (countryName === 'United Kingdom') countryName = 'United Kingdom';
-        if (countryName === 'Russian Federation') countryName = 'Russia';
         
-        fundingData[countryName] = {
-            value: item.total_value,
-            count: item.count,
-            displayName: item.country
-        };
+        // Handle common country name variations for Plotly
+        if (countryName === 'Democratic Republic of the Congo') countryName = 'Congo, Democratic Republic of the';
+        if (countryName === 'Republic of the Congo') countryName = 'Congo, Republic of the';
+        if (countryName === 'United States of America') countryName = 'United States';
+        if (countryName === 'Russian Federation') countryName = 'Russia';
+        if (countryName === 'United Kingdom') countryName = 'United Kingdom';
+        if (countryName === 'South Korea') countryName = 'Korea, South';
+        if (countryName === 'North Korea') countryName = 'Korea, North';
+        if (countryName === 'Czech Republic') countryName = 'Czechia';
+        if (countryName === 'Republic of Korea') countryName = 'Korea, South';
+        if (countryName === 'Ivory Coast') countryName = 'Cote d\'Ivoire';
+        if (countryName === 'Myanmar') countryName = 'Burma';
+        if (countryName === 'Swaziland') countryName = 'Eswatini';
+        
+        countries.push(countryName);
+        values.push(item.total_value);
+        countCounts.push(item.count);
+        hoverText.push(
+            `<b>${item.country}</b><br>` +
+            `Funding: $${(item.total_value/1000000).toFixed(1)}M CAD<br>` +
+            `Grants: ${item.count.toLocaleString()}`
+        );
     });
     
-    // Color scale function
-    function getColor(value) {
-        if (!value || value === 0) return '#f0f0f0';  // No funding
-        if (value < 1000000) return '#fee5d9';        // <$1M
-        if (value < 10000000) return '#fcbba1';       // $1-10M  
-        if (value < 50000000) return '#fc9272';       // $10-50M
-        if (value < 100000000) return '#fb6a4a';      // $50-100M
-        return '#de2d26';                             // $100M+
-    }
-    
-    // Style function for countries
-    function style(feature) {
-        const countryName = feature.properties.NAME;
-        const funding = fundingData[countryName];
-        return {
-            fillColor: getColor(funding ? funding.value : 0),
-            weight: 1,
-            opacity: 0.8,
-            color: '#666',
-            fillOpacity: 0.7
-        };
-    }
-    
-    // Highlight feature on mouseover
-    function highlightFeature(e) {
-        const layer = e.target;
-        layer.setStyle({
-            weight: 2,
-            color: '#333',
-            fillOpacity: 0.9
-        });
-        layer.bringToFront();
-    }
-    
-    // Reset highlight on mouseout
-    function resetHighlight(e) {
-        geojsonLayer.resetStyle(e.target);
-    }
-    
-    // Click handler
-    function zoomToFeature(e) {
-        map.fitBounds(e.target.getBounds());
-    }
-    
-    // Add popup and event handlers to each feature
-    function onEachFeature(feature, layer) {
-        const countryName = feature.properties.NAME;
-        const funding = fundingData[countryName];
-        
-        let popupContent = `<strong>${countryName}</strong><br>`;
-        if (funding) {
-            popupContent += `
-                <i class="fas fa-dollar-sign text-success"></i> $${(funding.value/1000000).toFixed(1)}M CAD<br>
-                <i class="fas fa-file-alt text-primary"></i> ${funding.count.toLocaleString()} grants
-            `;
-        } else {
-            popupContent += `<em class="text-muted">No recorded funding</em>`;
+    const data = [{
+        type: 'choropleth',
+        locationmode: 'country names',
+        locations: countries,
+        z: values,
+        hovertemplate: hoverText.map(text => text + '<extra></extra>'),
+        colorscale: [
+            [0, '#f7f7f7'],      // Very light gray for no/minimal funding
+            [0.1, '#fee5d9'],    // Light orange
+            [0.3, '#fcbba1'],    // Medium light orange
+            [0.5, '#fc9272'],    // Medium orange
+            [0.7, '#fb6a4a'],    // Medium dark orange
+            [1, '#de2d26']       // Dark red for highest funding
+        ],
+        colorbar: {
+            title: {
+                text: 'Funding Amount<br>(CAD)',
+                font: { size: 12 }
+            },
+            tickmode: 'array',
+            tickvals: [0, 10000000, 50000000, 100000000, 500000000, 1000000000],
+            ticktext: ['$0', '$10M', '$50M', '$100M', '$500M', '$1B+'],
+            x: 1.02,
+            len: 0.8
+        },
+        marker: {
+            line: {
+                color: 'rgb(180,180,180)',
+                width: 0.5
+            }
         }
-        
-        layer.bindPopup(popupContent);
-        layer.on({
-            mouseover: highlightFeature,
-            mouseout: resetHighlight,
-            click: zoomToFeature
-        });
-    }
+    }];
     
-    // Load world countries GeoJSON and add to map
-    let geojsonLayer;
-    fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson')
-        .then(response => response.json())
-        .then(data => {
-            geojsonLayer = L.geoJSON(data, {
-                style: style,
-                onEachFeature: onEachFeature
-            }).addTo(map);
-            
-            console.log('World map loaded successfully!');
+    const layout = {
+        title: {
+            text: 'Canadian International Development Funding by Country',
+            font: { size: 16 },
+            x: 0.5,
+            xanchor: 'center'
+        },
+        geo: {
+            showframe: false,
+            showcoastlines: true,
+            coastlinecolor: 'rgb(180,180,180)',
+            showland: true,
+            landcolor: 'rgb(243, 243, 243)',
+            showocean: true,
+            oceancolor: 'rgb(230, 245, 255)',
+            projection: {
+                type: 'natural earth'
+            }
+        },
+        font: {
+            family: 'Arial, sans-serif',
+            size: 12
+        },
+        margin: { t: 60, r: 20, b: 20, l: 20 },
+        height: 600
+    };
+    
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
+        displaylogo: false,
+        toImageButtonOptions: {
+            format: 'png',
+            filename: 'canada-gac-world-funding-map',
+            height: 600,
+            width: 1200,
+            scale: 2
+        }
+    };
+    
+    Plotly.newPlot('worldMap', data, layout, config)
+        .then(() => {
+            console.log('✅ Plotly world choropleth map loaded successfully!');
         })
         .catch(error => {
-            console.error('Error loading world map data:', error);
+            console.error('❌ Error loading Plotly world map:', error);
             document.getElementById('worldMap').innerHTML = 
-                '<div class="alert alert-warning text-center m-4">' +
+                '<div class="alert alert-danger text-center m-4">' +
                 '<i class="fas fa-exclamation-triangle"></i> ' +
-                'Unable to load world map data. Please check your internet connection.' +
+                'Unable to load world map visualization. Please refresh the page or contact support.' +
                 '</div>';
         });
 }
 </script>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 {% endblock %}
