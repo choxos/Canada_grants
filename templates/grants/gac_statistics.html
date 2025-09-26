@@ -4,8 +4,6 @@
 {% block title %}Global Affairs Canada - Statistics{% endblock %}
 
 {% block extra_head %}
-<!-- Try cdnjs (Cloudflare) - often works when others don't -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.24.1/plotly.min.js"></script>
 <style>
     .plotly-graph-div {
         border-radius: 8px;
@@ -346,8 +344,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('GAC Statistics charts initialized successfully!');
     
-    // Initialize World Choropleth Map with Plotly (with delay to ensure library loads)
-    setTimeout(initPlotlyWorldMap, 500);
+    // Initialize World Choropleth Map with Plotly (loaded via extra_js block like democracy-analysis)
+    setTimeout(initPlotlyWorldMap, 100);
     
     // Plotly World Choropleth Map
     function initPlotlyWorldMap() {
@@ -369,7 +367,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('❌ Plotly still not available after retry');
                     showMapError();
                 }
-            }, 2000);
+            }, 1000);
             return;
         }
         
@@ -384,7 +382,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<i class="fas fa-exclamation-triangle"></i> ' +
             '<strong>Map Library Loading Issue</strong><br>' +
             'Unable to load Plotly.js from CDN. This may be due to network restrictions.' +
-            '<br><small class="text-muted">CDN: cdnjs.cloudflare.com (Plotly v2.24.1)</small>' +
+            '<br><small class="text-muted">CDN: cdn.jsdelivr.net (Plotly v2.24.1) - same as democracy-analysis</small>' +
             '<br><br><button class="btn btn-primary btn-sm" onclick="location.reload()">Try Again</button>' +
             '</div>';
     }
@@ -440,4 +438,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Plotly.js for world map (loaded at end like democracy-analysis) -->
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.24.1/plotly.min.js"></script>
 {% endblock %}
