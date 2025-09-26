@@ -439,12 +439,13 @@ document.addEventListener('DOMContentLoaded', function() {
             ),
             hovertemplate: '%{text}<extra></extra>',
             colorscale: [
-                [0, '#f0f9ff'],      // Very light blue
-                [0.2, '#bae6fd'],    // Light blue  
-                [0.4, '#7dd3fc'],    // Sky blue
-                [0.6, '#38bdf8'],    // Medium blue
-                [0.8, '#0ea5e9'],    // Blue
-                [1, '#0369a1']       // Dark blue
+                [0, '#f7f7f7'],      // Light gray (no/minimal funding)
+                [0.1, '#fee5d9'],    // Very light orange
+                [0.3, '#fcbba1'],    // Light orange
+                [0.5, '#fc9272'],    // Medium orange
+                [0.7, '#fb6a4a'],    // Orange-red
+                [0.9, '#de2d26'],    // Red
+                [1, '#a50f15']       // Dark red (highest funding)
             ],
             colorbar: {
                 title: 'Funding (Millions CAD)',
