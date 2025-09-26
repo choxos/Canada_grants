@@ -155,11 +155,11 @@ SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=True, cast=bool)
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=True, cast=bool)
 
 # Static Files
-STATIC_ROOT = config('STATIC_ROOT', default='/home/cgt/Canada_grants/staticfiles')
+STATIC_ROOT = config('STATIC_ROOT', default='/var/www/cgt/staticfiles')
 STATIC_URL = '/static/'
 
 # Media Files
-MEDIA_ROOT = config('MEDIA_ROOT', default='/home/cgt/Canada_grants/media')
+MEDIA_ROOT = config('MEDIA_ROOT', default='/var/www/cgt/media')
 MEDIA_URL = '/media/'
 
 # Logging
@@ -170,7 +170,7 @@ LOGGING = {
         'file': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': config('LOG_FILE', default='/home/cgt/Canada_grants/logs/django.log'),
+            'filename': config('LOG_FILE', default='/var/www/cgt/logs/django.log'),
         },
     },
     'root': {
@@ -209,9 +209,9 @@ SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
 
 # File Paths
-STATIC_ROOT=/home/cgt/Canada_grants/staticfiles
-MEDIA_ROOT=/home/cgt/Canada_grants/media
-LOG_FILE=/home/cgt/Canada_grants/logs/django.log
+STATIC_ROOT=/var/www/cgt/staticfiles
+MEDIA_ROOT=/var/www/cgt/media
+LOG_FILE=/var/www/cgt/logs/django.log
 ```
 
 **⚠️ Security Notes**: 
@@ -267,7 +267,7 @@ python manage.py setup_tax_data
 
 ### 7.1 Create Gunicorn Configuration
 ```bash
-nano /home/cgt/Canada_grants/gunicorn_config.py
+nano /var/www/cgt/gunicorn_config.py
 ```
 
 Add:
@@ -285,7 +285,7 @@ reload = False
 
 ### 7.2 Test Gunicorn
 ```bash
-cd /home/cgt/Canada_grants
+cd /var/www/cgt/
 source venv/bin/activate
 gunicorn --config gunicorn_config.py grants_project.wsgi:application
 ```
@@ -307,13 +307,13 @@ sudo nano /etc/supervisor/conf.d/cgt.conf
 Add:
 ```ini
 [program:cgt]
-command=/home/cgt/Canada_grants/venv/bin/gunicorn --config /home/cgt/Canada_grants/gunicorn_config.py grants_project.wsgi:application
-directory=/home/cgt/Canada_grants
-user=cgt
+command=/var/www/cgt/venv/bin/gunicorn --config /var/www/cgt/gunicorn_config.py grants_project.wsgi:application
+directory=/var/www/cgt
+user=xeradb
 autostart=true
 autorestart=true
 redirect_stderr=true
-stdout_logfile=/home/cgt/Canada_grants/logs/gunicorn.log
+stdout_logfile=/var/www/cgt/logs/gunicorn.log
 environment=DJANGO_SETTINGS_MODULE=grants_project.settings_production
 ```
 
@@ -334,23 +334,11 @@ sudo supervisorctl status
 sudo nano /etc/nginx/sites-available/cgt.xeradb.com
 ```
 
-Add:
+Add this **HTTP-only configuration first**:
 ```nginx
 server {
     listen 80;
     server_name cgt.xeradb.com www.cgt.xeradb.com;
-    
-    # Redirect HTTP to HTTPS
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name cgt.xeradb.com www.cgt.xeradb.com;
-    
-    # SSL Configuration (will be updated after SSL certificate)
-    ssl_certificate /etc/letsencrypt/live/cgt.xeradb.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/cgt.xeradb.com/privkey.pem;
     
     # Security headers
     add_header X-Frame-Options DENY;
@@ -388,6 +376,8 @@ server {
 }
 ```
 
+**⚠️ Note**: This is the initial HTTP-only configuration. HTTPS will be added automatically by Certbot in Step 10.
+
 ### 9.2 Enable Site
 ```bash
 sudo ln -s /etc/nginx/sites-available/cgt.xeradb.com /etc/nginx/sites-enabled/
@@ -403,39 +393,41 @@ sudo nginx -t
 sudo apt install -y certbot python3-certbot-nginx
 ```
 
-### 10.2 Temporarily configure Nginx for HTTP
+### 10.2 Start Nginx with HTTP Configuration
 ```bash
-sudo nano /etc/nginx/sites-available/cgt.xeradb.com
-```
-
-Temporarily use this simple config:
-```nginx
-server {
-    listen 80;
-    server_name cgt.xeradb.com www.cgt.xeradb.com;
-    
-    location / {
-        proxy_pass http://127.0.0.1:8014;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-### 10.3 Get SSL Certificate
-```bash
+sudo systemctl start nginx
+sudo systemctl enable nginx
 sudo systemctl reload nginx
+```
+
+Test that your site works on HTTP:
+```bash
+curl -I http://cgt.xeradb.com
+```
+
+### 10.3 Get SSL Certificate (Automatic Nginx Update)
+```bash
 sudo certbot --nginx -d cgt.xeradb.com -d www.cgt.xeradb.com
 ```
 
-### 10.4 Update Nginx with Full Configuration
-After SSL certificate is obtained, update the Nginx config with the full HTTPS configuration above.
+**What Certbot does automatically:**
+- ✅ Obtains SSL certificate from Let's Encrypt
+- ✅ **Automatically updates your Nginx configuration** to add HTTPS  
+- ✅ Adds HTTP to HTTPS redirect
+- ✅ Configures SSL settings and security headers
+- ✅ Sets up automatic certificate renewal
 
+### 10.4 Verify HTTPS Works
 ```bash
 sudo systemctl reload nginx
 ```
+
+Test HTTPS:
+```bash
+curl -I https://cgt.xeradb.com
+```
+
+Your site should now automatically redirect HTTP to HTTPS!
 
 ---
 
@@ -443,8 +435,8 @@ sudo systemctl reload nginx
 
 ### 11.1 Set Proper Permissions
 ```bash
-sudo chown -R cgt:cgt /home/cgt/Canada_grants
-chmod -R 755 /home/cgt/Canada_grants
+sudo chown -R cgt:cgt /var/www/cgt
+chmod -R 755 /var/www/cgt
 ```
 
 ### 11.2 Create Backup Script
@@ -482,7 +474,7 @@ Add:
 0 2 * * * /home/cgt/backup_database.sh
 
 # Collect static files weekly
-0 3 * * 0 cd /home/cgt/Canada_grants && source venv/bin/activate && python manage.py collectstatic --noinput
+0 3 * * 0 cd /var/www/cgt && source venv/bin/activate && python manage.py collectstatic --noinput
 ```
 
 ---
@@ -499,8 +491,8 @@ sudo systemctl status postgresql
 ### 12.2 View Logs
 ```bash
 # Application logs
-tail -f /home/cgt/Canada_grants/logs/gunicorn.log
-tail -f /home/cgt/Canada_grants/logs/django.log
+tail -f /var/www/cgt/logs/gunicorn.log
+tail -f /var/www/cgt/logs/django.log
 
 # Nginx logs
 sudo tail -f /var/log/nginx/access.log
@@ -509,7 +501,7 @@ sudo tail -f /var/log/nginx/error.log
 
 ### 12.3 Update Application
 ```bash
-cd /home/cgt/Canada_grants
+cd /var/www/cgt
 git pull origin main
 source venv/bin/activate
 pip install -r requirements.txt
@@ -552,14 +544,14 @@ sudo supervisorctl restart cgt
 
 3. **Static Files Not Loading**: Collect static files
    ```bash
-   cd /home/cgt/Canada_grants
+   cd /var/www/cgt
    source venv/bin/activate
    python manage.py collectstatic --noinput
    ```
 
 4. **Permission Denied**: Fix permissions
    ```bash
-   sudo chown -R cgt:cgt /home/cgt/Canada_grants
+   sudo chown -R cgt:cgt /var/www/cgt
    ```
 
 ---

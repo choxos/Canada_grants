@@ -189,21 +189,11 @@ stdout_logfile=$APP_DIR/logs/gunicorn.log
 environment=DJANGO_SETTINGS_MODULE=grants_project.settings_production
 EOF
 
-echo "1️⃣1️⃣  Creating Nginx configuration..."
+echo "1️⃣1️⃣  Creating Nginx configuration (HTTP only - SSL added later)..."
 sudo tee /etc/nginx/sites-available/$DOMAIN > /dev/null << EOF
 server {
     listen 80;
     server_name $DOMAIN www.$DOMAIN;
-    return 301 https://\$server_name\$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name $DOMAIN www.$DOMAIN;
-    
-    # SSL Configuration (update after getting certificate)
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
     
     # Security headers
     add_header X-Frame-Options DENY;
@@ -275,18 +265,22 @@ echo ""
 echo "🎉 Deployment script completed!"
 echo ""
 echo "📝 Next steps:"
-echo "   1. Get SSL certificate: sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN"
-echo "   2. Create Django superuser: python manage.py createsuperuser"
-echo "   3. Import grant data if you have CSV files"
-echo "   4. Setup cron jobs for backups"
+echo "   1. Test HTTP site: curl -I http://$DOMAIN"
+echo "   2. Get SSL certificate: sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN"
+echo "   3. Create Django superuser: python manage.py createsuperuser"
+echo "   4. Import grant data if you have CSV files"
+echo "   5. Setup cron jobs for backups"
 echo ""
-echo "🌐 Your application should be available at:"
-echo "   http://$DOMAIN (will redirect to HTTPS after SSL)"
-echo "   https://$DOMAIN (after SSL certificate)"
+echo "🌐 Your application is available at:"
+echo "   http://$DOMAIN (currently HTTP only)"
+echo ""
+echo "🔒 After running Certbot:"
+echo "   https://$DOMAIN (HTTPS with automatic redirect)"
 echo ""
 echo "🔧 Useful commands:"
 echo "   Check status: sudo supervisorctl status cgt"
 echo "   Restart app:  sudo supervisorctl restart cgt"
 echo "   View logs:    tail -f $APP_DIR/logs/gunicorn.log"
+echo "   Test site:    curl -I http://$DOMAIN"
 echo ""
 echo "🚀 Happy deploying!"

@@ -89,16 +89,27 @@ The deploy script will automatically:
 ## 4️⃣ SSL Certificate
 
 ```bash
+# Test HTTP site first
+curl -I http://cgt.xeradb.com
+
 # Install Certbot
 sudo apt install -y certbot python3-certbot-nginx
 
-# Get certificate
+# Get SSL certificate (automatically updates nginx config)
 sudo certbot --nginx -d cgt.xeradb.com -d www.cgt.xeradb.com
 
 # Reload services
 sudo systemctl reload nginx
 sudo supervisorctl restart cgt
+
+# Test HTTPS
+curl -I https://cgt.xeradb.com
 ```
+
+**What Certbot does:**
+- ✅ Automatically adds HTTPS configuration to nginx
+- ✅ Sets up HTTP to HTTPS redirect
+- ✅ Configures SSL certificates and security headers
 
 ---
 
