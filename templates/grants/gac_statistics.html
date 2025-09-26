@@ -4,29 +4,64 @@
 {% block title %}Global Affairs Canada - Statistics{% endblock %}
 
 {% block extra_head %}
-<script src="https://cdn.plot.ly/plotly-latest.min.js" onerror="plotlyFallback()"></script>
 <script>
-function plotlyFallback() {
-    console.log('Primary Plotly CDN failed, trying fallback...');
-    var script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/plotly.js-dist@latest/plotly.min.js';
-    script.onerror = function() {
-        console.log('Plotly fallback also failed, showing error message...');
-        setTimeout(function() {
-            var mapDiv = document.getElementById('worldMap');
-            if (mapDiv) {
-                mapDiv.innerHTML = 
-                    '<div class="alert alert-warning text-center m-4">' +
-                    '<i class="fas fa-exclamation-triangle"></i> ' +
-                    '<strong>Map Library Loading Issue</strong><br>' +
-                    'The interactive map requires an internet connection to load visualization libraries. ' +
-                    'Please check your connection and refresh the page.' +
-                    '</div>';
-            }
-        }, 1000);
-    };
-    document.head.appendChild(script);
+// Multiple CDN fallback system with detailed diagnostics
+window.plotlyLoadingAttempts = [];
+window.plotlyLoadingStatus = 'starting';
+
+function loadPlotlyWithFallback() {
+    const cdnSources = [
+        'https://cdn.plot.ly/plotly-latest.min.js',
+        'https://cdn.jsdelivr.net/npm/plotly.js-dist@latest/plotly.min.js',
+        'https://unpkg.com/plotly.js-dist@latest/plotly.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js'
+    ];
+    
+    let currentCdnIndex = 0;
+    
+    function tryNextCdn() {
+        if (currentCdnIndex >= cdnSources.length) {
+            console.error('❌ All Plotly CDNs failed to load');
+            window.plotlyLoadingStatus = 'all_failed';
+            return;
+        }
+        
+        const cdnUrl = cdnSources[currentCdnIndex];
+        const attemptInfo = {
+            index: currentCdnIndex + 1,
+            url: cdnUrl,
+            timestamp: Date.now()
+        };
+        
+        console.log(`🔄 Trying Plotly CDN ${attemptInfo.index}/4: ${cdnUrl}`);
+        window.plotlyLoadingAttempts.push(attemptInfo);
+        
+        const script = document.createElement('script');
+        script.src = cdnUrl;
+        
+        script.onload = function() {
+            attemptInfo.status = 'loaded';
+            attemptInfo.loadTime = Date.now() - attemptInfo.timestamp;
+            console.log(`✅ Plotly CDN ${attemptInfo.index} loaded successfully in ${attemptInfo.loadTime}ms`);
+            window.plotlyLoadingStatus = 'loaded';
+        };
+        
+        script.onerror = function() {
+            attemptInfo.status = 'failed';
+            attemptInfo.loadTime = Date.now() - attemptInfo.timestamp;
+            console.warn(`❌ Plotly CDN ${attemptInfo.index} failed after ${attemptInfo.loadTime}ms`);
+            currentCdnIndex++;
+            tryNextCdn();
+        };
+        
+        document.head.appendChild(script);
+    }
+    
+    tryNextCdn();
 }
+
+// Start loading immediately
+loadPlotlyWithFallback();
 </script>
 <style>
     .plotly-graph-div {
@@ -374,17 +409,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Wait for Plotly library to load before initializing map
     function waitForPlotlyAndInit() {
         let attempts = 0;
-        const maxAttempts = 50; // 5 seconds max wait
+        const maxAttempts = 100; // 10 seconds max wait (longer for multiple CDN attempts)
         
         function checkPlotly() {
             if (typeof Plotly !== 'undefined') {
-                console.log('✅ Plotly library loaded successfully');
+                console.log('✅ Plotly library is ready - initializing map');
                 initPlotlyWorldMap();
-            } else if (attempts < maxAttempts) {
+                return;
+            }
+            
+            // Check if all CDNs have been tried and failed
+            if (window.plotlyLoadingStatus === 'all_failed') {
+                console.error('❌ All Plotly CDNs failed to load');
+                showPlotlyError();
+                return;
+            }
+            
+            // Continue waiting if CDNs are still being tried or loaded
+            if (attempts < maxAttempts) {
                 attempts++;
                 setTimeout(checkPlotly, 100);
             } else {
-                console.error('❌ Plotly library failed to load after 5 seconds');
+                console.error('❌ Plotly loading timed out after 10 seconds');
+                console.log('🔍 Loading attempts:', window.plotlyLoadingAttempts);
+                console.log('📊 Final loading status:', window.plotlyLoadingStatus);
                 showPlotlyError();
             }
         }
@@ -394,14 +442,37 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Show error message if Plotly fails to load
     function showPlotlyError() {
+        const attemptCount = window.plotlyLoadingAttempts.length;
+        const failedCdns = window.plotlyLoadingAttempts
+            .filter(attempt => attempt.status === 'failed')
+            .map(attempt => attempt.url.split('/')[2]) // Extract domain
+            .join(', ');
+        
         document.getElementById('worldMap').innerHTML = 
             '<div class="alert alert-warning text-center m-4">' +
             '<i class="fas fa-exclamation-triangle"></i> ' +
             '<strong>Map Visualization Unavailable</strong><br>' +
-            'Unable to load the interactive map. This may be due to network restrictions or ad blockers.' +
-            '<br><br><button class="btn btn-primary btn-sm" onclick="location.reload()">Try Again</button>' +
+            `Unable to load interactive map after trying ${attemptCount} CDN(s).` +
+            '<br><small class="text-muted">This may be due to network restrictions, ad blockers, or firewall settings.</small>' +
+            '<br><br><button class="btn btn-primary btn-sm me-2" onclick="location.reload()">Try Again</button>' +
+            '<button class="btn btn-secondary btn-sm" onclick="showDiagnostics()">Show Diagnostics</button>' +
+            '<div id="diagnostics" class="mt-3" style="display:none;">' +
+            '<small class="text-muted">' +
+            '<strong>Attempted CDNs:</strong><br>' +
+            window.plotlyLoadingAttempts.map(attempt => 
+                `• ${attempt.url.split('/')[2]}: ${attempt.status || 'trying'} (${attempt.loadTime || '?'}ms)`
+            ).join('<br>') +
+            '</small></div>' +
             '</div>';
     }
+    
+    // Make showDiagnostics globally available for onclick
+    window.showDiagnostics = function() {
+        const diagnostics = document.getElementById('diagnostics');
+        if (diagnostics) {
+            diagnostics.style.display = diagnostics.style.display === 'none' ? 'block' : 'none';
+        }
+    };
     
     // Plotly World Choropleth Map (moved inside DOMContentLoaded to access data)
     function initPlotlyWorldMap() {
