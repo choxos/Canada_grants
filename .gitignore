@@ -45,13 +45,14 @@ local_settings.py
 ehthumbs.db
 Thumbs.db
 
-# CSV data files (can be large)
-csv/
-*.csv
+# CSV data files - including core data files in repository
+# Exclude only generated/temporary CSV files
 all_grants_for_review.csv
 batch1_flagged.csv
 batch_1.csv
 grants_review.csv
+*_backup.csv
+*_temp.csv
 
 # Logs
 logs/
