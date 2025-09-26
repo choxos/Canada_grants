@@ -1,0 +1,674 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Tax Contribution Calculator - Canadian Grants Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-calculator"></i> Calculate Your Tax Contribution</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Enter your income and spending information to see how much you personally contributed 
+                    to government grants through your federal taxes and GST payments. Note: Only about 2.5% 
+                    of federal spending goes to grants and contributions programs.
+                </p>
+                
+                <form id="taxCalculatorForm">
+                    <!-- Input Mode Toggle -->
+                    <div class="mb-3">
+                        <label class="form-label">Input Mode</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="inputMode" id="annualMode" value="annual" checked>
+                            <label class="btn btn-outline-primary" for="annualMode">Annual Amounts</label>
+                            
+                            <input type="radio" class="btn-check" name="inputMode" id="monthlyMode" value="monthly">
+                            <label class="btn btn-outline-primary" for="monthlyMode">Monthly Amounts</label>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="income" class="form-label" id="incomeLabel">Annual Income (before tax)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="income" 
+                                           placeholder="75000" min="0" step="100" required>
+                                </div>
+                                <small class="form-text text-muted" id="incomeHelp">Your total annual income before taxes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="gstSpending" class="form-label" id="spendingLabel">Annual GST-Eligible Spending</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="gstSpending" 
+                                           placeholder="30000" min="0" step="100" required>
+                                </div>
+                                <small class="form-text text-muted" id="spendingHelp">
+                                    Spending on goods/services that include GST (excludes rent, groceries, etc.)
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Taxpayer Since Year -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="taxpayerSince" class="form-label">Canadian Taxpayer Since</label>
+                                <select class="form-select" id="taxpayerSince" required>
+                                    <option value="">Select year...</option>
+                                    <option value="1990">1990 or earlier</option>
+                                    <option value="2000">2000</option>
+                                    <option value="2010">2010</option>
+                                    <option value="2015">2015</option>
+                                    <option value="2018" selected>2018</option>
+                                    <option value="2019">2019</option>
+                                    <option value="2020">2020</option>
+                                    <option value="2021">2021</option>
+                                    <option value="2022">2022</option>
+                                    <option value="2023">2023</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2025">2025</option>
+                                </select>
+                                <small class="form-text text-muted">Year you started paying Canadian federal taxes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Grant Types to Include</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="includeGAC" checked>
+                                    <label class="form-check-label" for="includeGAC">
+                                        <i class="fas fa-globe-americas text-info"></i>
+                                        <strong>Include Global Affairs Canada</strong>
+                                    </label>
+                                    <small class="form-text text-muted">
+                                        Include international development grants in your calculation
+                                    </small>
+                                </div>
+                                <div class="form-text mt-2">
+                                    <i class="fas fa-info-circle text-primary"></i>
+                                    <strong>Enhanced Calculation:</strong> Multi-year project contributions calculated year-by-year.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-calculator"></i> Calculate My Contribution
+                    </button>
+                </form>
+                
+                <div id="loadingSpinner" class="text-center mt-3" style="display: none;">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Calculating...</span>
+                    </div>
+                </div>
+                
+                <div id="calculationResults" class="mt-4" style="display: none;">
+                    <h5>Your Tax Contribution</h5>
+                    
+                    <!-- Annual vs Monthly Toggle -->
+                    <div class="mb-3">
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check" name="timeframe" id="annual" checked>
+                            <label class="btn btn-outline-primary" for="annual">Annual</label>
+                            
+                            <input type="radio" class="btn-check" name="timeframe" id="monthly">
+                            <label class="btn btn-outline-primary" for="monthly">Monthly</label>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6>Federal Income Tax</h6>
+                                    <h4 id="federalTax" class="text-primary">$0</h4>
+                                    <small id="federalTaxMonthly" class="text-muted" style="display: none;">$0/month</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6>GST Paid</h6>
+                                    <h4 id="gstPaid" class="text-success">$0</h4>
+                                    <small id="gstPaidMonthly" class="text-muted" style="display: none;">$0/month</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h6>Total Tax Contribution</h6>
+                                    <h4 id="totalTax">$0</h4>
+                                    <small id="totalTaxMonthly" class="text-muted" style="display: none;">$0/month</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-dark">
+                                <div class="card-body text-center">
+                                    <h6>Goes to Grants (2.5%)</h6>
+                                    <h4 id="grantsPortionTax">$0</h4>
+                                    <small id="grantsPortionTaxMonthly" class="text-muted" style="display: none;">$0/month</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Understanding Your Contribution</h6>
+                            <p class="mb-2"><strong>Your share of federal revenue:</strong> <span id="revenueShare">0%</span></p>
+                            <p class="mb-2"><strong>Grants allocation:</strong> <span id="grantsAllocation">2.5%</span> of federal budget goes to grants & contributions</p>
+                            <p class="mb-2"><strong>Your effective share of grants:</strong> $<span id="totalGrantsShare">0</span> annually 
+                               (<span id="monthlyGrantsShare">$0</span> monthly) out of $<span id="totalGrantsValue">{{ total_grants_value|floatformat:0|intcomma }}</span> total</p>
+                            <div id="grantsBreakdown" class="mt-2" style="display: none;">
+                                <p class="mb-1 small text-muted"><strong>Breakdown by Grant Type:</strong></p>
+                                <div class="row small">
+                                    <div class="col-6">
+                                        <i class="fas fa-hand-holding-usd text-primary"></i> Domestic: $<span id="domesticGrantsShare">0</span> annually (<span id="domesticPercentage">0%</span>)
+                                    </div>
+                                    <div class="col-6">
+                                        <i class="fas fa-globe-americas text-info"></i> Global Affairs: $<span id="gacGrantsShare">0</span> annually (<span id="gacPercentage">0%</span>)
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="mb-0 text-muted"><small><span id="inputModeUsed"></span></small></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="yearlyBreakdown" class="mt-4" style="display: none;">
+                    <h5><i class="fas fa-chart-line"></i> Your Sophisticated Year-by-Year Tax Contribution</h5>
+                    <p class="text-muted">This calculation accounts for multi-year project durations and only includes years when you were a Canadian taxpayer (since <span id="taxpayerSinceDisplay"></span>).</p>
+                    
+                    <!-- Historical Contributions -->
+                    <h6>Historical Contributions</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>Active Projects</th>
+                    <th>Your Contribution</th>
+                    <th id="yearlyBreakdownHeader">Breakdown</th>
+                    <th>Top Projects</th>
+                </tr>
+                            </thead>
+                            <tbody id="yearlyBreakdownTable"></tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Future Projections -->
+                    <div id="futureProjections" class="mt-4">
+                        <h6><i class="fas fa-crystal-ball"></i> Future Projections (2026-2035)</h6>
+                        <p class="text-muted">Based on existing multi-year projects and historical averages.</p>
+                        
+                        <!-- Projection Toggle -->
+                        <div class="mb-3">
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="projectionMode" id="continuingOnly" checked>
+                                <label class="btn btn-outline-secondary" for="continuingOnly">Existing Projects Only</label>
+                                
+                                <input type="radio" class="btn-check" name="projectionMode" id="withNewProjects">
+                                <label class="btn btn-outline-primary" for="withNewProjects">With New Projects</label>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Year</th>
+                                        <th>Continuing Projects</th>
+                                        <th id="newProjectsHeader" style="display: none;">Estimated New</th>
+                                        <th>Total Projection</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="futureProjectionsTable"></tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <small>
+                                <strong>Note:</strong> Future projections are estimates. "With New Projects" scenario assumes 
+                                new grants will be awarded at historical average rates (<span id="historicalAverage"></span> annually).
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="grantShares" class="mt-4" style="display: none;">
+                    <h5>Your Share of Notable Grants</h5>
+                    <div id="grantSharesList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> How It Works</h5>
+            </div>
+            <div class="card-body">
+                <h6>Input Options</h6>
+                <p class="small">Choose between annual or monthly input for more precise calculations based on your budgeting preferences.</p>
+                
+                <h6>Federal Income Tax</h6>
+                <p class="small">Calculated using 2024 federal tax brackets (15%, 20.5%, 26%, 29%, 33%)</p>
+                
+                <h6>GST Calculation</h6>
+                <p class="small">5% GST on eligible purchases (excludes basic groceries, rent, medical services)</p>
+                
+                <h6>Your Grant Share</h6>
+                <p class="small">Your tax contribution ÷ federal revenue × grants allocation (2.5%) × grant amount = your personal share</p>
+                
+                <h6>Grants Allocation</h6>
+                <p class="small">Only ~2.5% of federal spending goes to grants and contributions. The rest funds healthcare, defense, debt servicing, etc.</p>
+                
+                <div class="alert alert-info">
+                    <small><i class="fas fa-lightbulb"></i> 
+                    This calculator provides estimates based on federal taxes only. 
+                    Provincial taxes and other factors are not included.</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Quick Stats</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Total Grants:</strong> {{ total_grants_count|intcomma }}</p>
+                <p><strong>Total Value:</strong> ${{ total_grants_value|floatformat:0|intcomma }}</p>
+                <p><strong>Average Grant:</strong> ${% widthratio total_grants_value total_grants_count 1 %}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Handle input mode switching
+document.querySelectorAll('input[name="inputMode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        updateInputMode(this.value);
+    });
+});
+
+function updateInputMode(mode) {
+    const incomeLabel = document.getElementById('incomeLabel');
+    const spendingLabel = document.getElementById('spendingLabel');
+    const incomeHelp = document.getElementById('incomeHelp');
+    const spendingHelp = document.getElementById('spendingHelp');
+    const incomeInput = document.getElementById('income');
+    const spendingInput = document.getElementById('gstSpending');
+    
+    if (mode === 'monthly') {
+        incomeLabel.textContent = 'Monthly Income (before tax)';
+        spendingLabel.textContent = 'Monthly GST-Eligible Spending';
+        incomeHelp.textContent = 'Your monthly income before taxes';
+        spendingHelp.textContent = 'Monthly spending on goods/services that include GST (excludes rent, groceries, etc.)';
+        incomeInput.placeholder = '6250';
+        spendingInput.placeholder = '2500';
+        incomeInput.step = '50';
+        spendingInput.step = '50';
+    } else {
+        incomeLabel.textContent = 'Annual Income (before tax)';
+        spendingLabel.textContent = 'Annual GST-Eligible Spending';
+        incomeHelp.textContent = 'Your total annual income before taxes';
+        spendingHelp.textContent = 'Spending on goods/services that include GST (excludes rent, groceries, etc.)';
+        incomeInput.placeholder = '75000';
+        spendingInput.placeholder = '30000';
+        incomeInput.step = '1000';
+        spendingInput.step = '1000';
+    }
+    
+    // Clear existing values when switching modes
+    incomeInput.value = '';
+    spendingInput.value = '';
+}
+
+document.getElementById('taxCalculatorForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const income = document.getElementById('income').value;
+    const gstSpending = document.getElementById('gstSpending').value;
+    const taxpayerSince = document.getElementById('taxpayerSince').value;
+    const includeGAC = document.getElementById('includeGAC').checked;
+    const inputMode = document.querySelector('input[name="inputMode"]:checked').value;
+    
+    if (!income || !gstSpending || !taxpayerSince) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    // Convert to annual amounts if monthly input
+    let annualIncome = parseFloat(income);
+    let annualGstSpending = parseFloat(gstSpending);
+    
+    if (inputMode === 'monthly') {
+        annualIncome *= 12;
+        annualGstSpending *= 12;
+    }
+    
+    // Show loading spinner
+    document.getElementById('loadingSpinner').style.display = 'block';
+    document.getElementById('calculationResults').style.display = 'none';
+    document.getElementById('grantShares').style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/calculate/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                annual_income: annualIncome,
+                gst_eligible_spending: annualGstSpending,
+                input_mode: inputMode,
+                original_income: parseFloat(income),
+                original_spending: parseFloat(gstSpending),
+                taxpayer_since_year: parseInt(taxpayerSince),
+                include_gac: includeGAC
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayResults(data);
+        } else {
+            let errorMessage = 'Calculation failed: ' + data.error;
+            if (data.error_type === 'validation') {
+                errorMessage = 'Please check your input values: ' + data.error;
+            } else if (data.error_type === 'calculation') {
+                errorMessage = 'Calculation error: ' + data.error;
+            }
+            
+            alert(errorMessage);
+            console.error('Tax calculation error:', data);
+        }
+    } catch (error) {
+        alert('Network or processing error: ' + error.message);
+        console.error('Request failed:', error);
+    } finally {
+        document.getElementById('loadingSpinner').style.display = 'none';
+    }
+});
+
+function displayResults(data) {
+    const calc = data.calculation;
+    
+    // Store data globally for timeframe switching
+    window.calculationData = data;
+    
+    // Update tax breakdown (start with annual view)
+    updateTaxDisplay('annual');
+    
+    // Update other information with enhanced formatting
+    document.getElementById('revenueShare').textContent = calc.revenue_share_percentage.toFixed(6) + '%';
+    document.getElementById('grantsAllocation').textContent = calc.grants_allocation_percentage + '%';
+    document.getElementById('totalGrantsShare').textContent = data.total_grants_share_formatted;
+    document.getElementById('monthlyGrantsShare').textContent = data.monthly_grants_share_formatted;
+    
+    // Show/hide breakdown based on GAC inclusion
+    if (data.include_gac && data.breakdown) {
+        document.getElementById('grantsBreakdown').style.display = 'block';
+        document.getElementById('domesticGrantsShare').textContent = data.breakdown.domestic_grants_share_formatted || '$0.00';
+        
+        const domesticPercentage = data.breakdown.domestic_percentage || 0;
+        document.getElementById('domesticPercentage').textContent = (typeof domesticPercentage === 'number' ? domesticPercentage.toFixed(1) : '0.0') + '%';
+        
+        document.getElementById('gacGrantsShare').textContent = data.breakdown.gac_grants_share_formatted || '$0.00';
+        
+        const gacPercentage = data.breakdown.gac_percentage || 0;
+        document.getElementById('gacPercentage').textContent = (typeof gacPercentage === 'number' ? gacPercentage.toFixed(1) : '0.0') + '%';
+    } else {
+        document.getElementById('grantsBreakdown').style.display = 'none';
+    }
+    
+    // Show input mode used
+    const inputModeText = calc.input_mode === 'monthly' 
+        ? `Calculated from monthly input: $${calc.original_income.toLocaleString()}/month income, $${calc.original_spending.toLocaleString()}/month GST spending`
+        : `Calculated from annual input: $${calc.original_income.toLocaleString()} annual income, $${calc.original_spending.toLocaleString()} annual GST spending`;
+    document.getElementById('inputModeUsed').textContent = inputModeText;
+    
+    // Add timeframe toggle listeners
+    document.querySelectorAll('input[name="timeframe"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            updateTaxDisplay(this.id);
+        });
+    });
+    
+    // Show results
+    document.getElementById('calculationResults').style.display = 'block';
+    
+    // Display taxpayer since year
+    document.getElementById('taxpayerSinceDisplay').textContent = calc.taxpayer_since_year;
+    
+    // Display enhanced yearly breakdown
+    const yearlyTable = document.getElementById('yearlyBreakdownTable');
+    yearlyTable.innerHTML = '';
+    
+    // Show/hide breakdown header based on GAC inclusion
+    const breakdownHeader = document.getElementById('yearlyBreakdownHeader');
+    if (data.include_gac) {
+        breakdownHeader.textContent = 'Breakdown (Dom/GAC)';
+        breakdownHeader.style.display = 'table-cell';
+    } else {
+        breakdownHeader.style.display = 'none';
+    }
+    
+    // Filter historical years (current year and before)
+    const currentYear = new Date().getFullYear();
+    const historicalYears = data.yearly_breakdown.filter(year => year.year <= currentYear);
+    
+        historicalYears.forEach(year => {
+            const topProjects = year.top_projects.slice(0, 3).map(p => 
+                `<small>${p.title} (${p.user_annual_share_formatted || '$' + p.user_annual_share.toFixed(2)})</small>`
+            ).join('<br>');
+            
+            // Create breakdown display
+            let breakdownDisplay = '';
+            if (data.include_gac && (year.domestic_count > 0 || year.gac_count > 0)) {
+                breakdownDisplay = `
+                    <small>
+                        <i class="fas fa-hand-holding-usd text-primary"></i> ${year.domestic_share_formatted || '$0.00'}<br>
+                        <i class="fas fa-globe-americas text-info"></i> ${year.gac_share_formatted || '$0.00'}
+                    </small>
+                `;
+            } else {
+                breakdownDisplay = `<small class="text-muted">—</small>`;
+            }
+            
+            const row = document.createElement('tr');
+            if (data.include_gac) {
+                row.innerHTML = `
+                    <td><strong>${year.year}</strong></td>
+                    <td><span class="badge bg-secondary">${year.grant_count}</span></td>
+                    <td class="text-primary"><strong>${year.user_share_formatted}</strong></td>
+                    <td>${breakdownDisplay}</td>
+                    <td style="max-width: 200px;">${topProjects || '<small class="text-muted">No projects</small>'}</td>
+                `;
+            } else {
+                row.innerHTML = `
+                    <td><strong>${year.year}</strong></td>
+                    <td><span class="badge bg-secondary">${year.grant_count}</span></td>
+                    <td class="text-primary"><strong>${year.user_share_formatted}</strong></td>
+                    <td style="max-width: 200px;">${topProjects || '<small class="text-muted">No projects</small>'}</td>
+                `;
+            }
+            yearlyTable.appendChild(row);
+        });
+    
+    // Display future projections
+    if (data.future_projections) {
+        displayFutureProjections(data.future_projections);
+        document.getElementById('historicalAverage').textContent = '$' + data.future_projections.historical_average.toFixed(2);
+    }
+    
+    document.getElementById('yearlyBreakdown').style.display = 'block';
+    
+    // Add projection mode toggle listeners
+    document.querySelectorAll('input[name="projectionMode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            displayFutureProjections(data.future_projections);
+        });
+    });
+    
+    // Display enhanced grant shares with formatting
+    const grantSharesList = document.getElementById('grantSharesList');
+    grantSharesList.innerHTML = '';
+    
+    data.grant_shares.forEach(grant => {
+        const grantDiv = document.createElement('div');
+        grantDiv.className = 'card mb-2';
+        grantDiv.innerHTML = `
+            <div class="card-body">
+                <h6><a href="/grants/${grant.id}/" class="text-decoration-none">${grant.title}</a></h6>
+                <p class="small text-muted">${grant.recipient} • ${grant.fiscal_year}</p>
+                <div class="d-flex justify-content-between align-items-end">
+                    <span>Total: <strong>$${grant.total_value.toLocaleString()}</strong></span>
+                    <span class="fw-bold text-primary fs-5">${grant.user_share_formatted}</span>
+                </div>
+            </div>
+        `;
+        grantSharesList.appendChild(grantDiv);
+    });
+    
+    document.getElementById('grantShares').style.display = 'block';
+}
+
+function updateTaxDisplay(timeframe) {
+    if (!window.calculationData) return;
+    
+    const calc = window.calculationData.calculation;
+    
+    if (timeframe === 'monthly') {
+        // Show monthly amounts
+        document.getElementById('federalTax').textContent = '$' + calc.monthly_federal_tax.toFixed(0);
+        document.getElementById('gstPaid').textContent = '$' + calc.monthly_gst_paid.toFixed(0);
+        document.getElementById('totalTax').textContent = '$' + calc.monthly_tax_contribution.toFixed(0);
+        document.getElementById('grantsPortionTax').textContent = calc.monthly_grants_portion_formatted || formatCurrency(calc.monthly_grants_portion);
+        
+        // Hide monthly labels, show main amounts as monthly
+        document.getElementById('federalTaxMonthly').style.display = 'none';
+        document.getElementById('gstPaidMonthly').style.display = 'none';
+        document.getElementById('totalTaxMonthly').style.display = 'none';
+        document.getElementById('grantsPortionTaxMonthly').style.display = 'none';
+    } else {
+        // Show annual amounts with enhanced formatting
+        document.getElementById('federalTax').textContent = '$' + calc.federal_income_tax.toLocaleString();
+        document.getElementById('gstPaid').textContent = '$' + calc.gst_paid.toLocaleString();
+        document.getElementById('totalTax').textContent = calc.total_tax_contribution_formatted || '$' + calc.total_tax_contribution.toLocaleString();
+        document.getElementById('grantsPortionTax').textContent = calc.grants_portion_of_taxes_formatted || formatCurrency(calc.grants_portion_of_taxes);
+        
+        // Show monthly labels with enhanced formatting
+        document.getElementById('federalTaxMonthly').textContent = '$' + calc.monthly_federal_tax.toFixed(0) + '/month';
+        document.getElementById('gstPaidMonthly').textContent = '$' + calc.monthly_gst_paid.toFixed(0) + '/month';
+        document.getElementById('totalTaxMonthly').textContent = '$' + calc.monthly_tax_contribution.toFixed(0) + '/month';
+        document.getElementById('grantsPortionTaxMonthly').textContent = (calc.monthly_grants_portion_formatted || formatCurrency(calc.monthly_grants_portion)) + '/month';
+        
+        document.getElementById('federalTaxMonthly').style.display = 'block';
+        document.getElementById('gstPaidMonthly').style.display = 'block';
+        document.getElementById('totalTaxMonthly').style.display = 'block';
+        document.getElementById('grantsPortionTaxMonthly').style.display = 'block';
+    }
+}
+
+function displayFutureProjections(projections) {
+    const projectionMode = document.querySelector('input[name="projectionMode"]:checked').id;
+    const table = document.getElementById('futureProjectionsTable');
+    const newProjectsHeader = document.getElementById('newProjectsHeader');
+    
+    table.innerHTML = '';
+    
+    // Show/hide new projects column
+    if (projectionMode === 'withNewProjects') {
+        newProjectsHeader.style.display = 'table-cell';
+    } else {
+        newProjectsHeader.style.display = 'none';
+    }
+    
+    // Get the appropriate data
+    const data = projectionMode === 'withNewProjects' ? 
+        projections.with_new_projects : projections.continuing_only;
+    
+    // Convert to sorted array and display
+    const years = Object.keys(data).map(year => parseInt(year)).sort((a, b) => a - b);
+    
+    years.forEach(year => {
+        const yearData = data[year];
+        const row = document.createElement('tr');
+        
+        if (projectionMode === 'withNewProjects') {
+            const continuingAmount = yearData.continuing_contribution || 0;
+            const newAmount = yearData.estimated_new_contribution || 0;
+            const totalAmount = yearData.total_contribution;
+            
+            row.innerHTML = `
+                <td><strong>${year}</strong></td>
+                <td>${formatCurrency(continuingAmount)}</td>
+                <td class="text-success">${formatCurrency(newAmount)}</td>
+                <td class="text-primary fw-bold">${formatCurrency(totalAmount)}</td>
+            `;
+        } else {
+            row.innerHTML = `
+                <td><strong>${year}</strong></td>
+                <td>${yearData.grant_count || 0}</td>
+                <td colspan="2" class="text-primary fw-bold">${formatCurrency(yearData.total_contribution)}</td>
+            `;
+        }
+        
+        table.appendChild(row);
+    });
+    
+    // If no future projects, show a message
+    if (years.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td colspan="4" class="text-center text-muted">
+                <em>No continuing projects found for future years</em>
+            </td>
+        `;
+        table.appendChild(row);
+    }
+}
+
+function formatCurrency(amount) {
+    if (typeof amount !== 'number') return '<$0.01';
+    if (amount < 0.01 && amount > 0) return '<$0.01';
+    if (amount === 0) return '$0.00';
+    return '$' + amount.toFixed(2);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

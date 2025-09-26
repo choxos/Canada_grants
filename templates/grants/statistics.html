@@ -1,0 +1,593 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Statistics Dashboard - Canadian Government Grants Tracker{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white p-4 rounded">
+            <h1 class="display-4"><i class="fas fa-chart-line"></i> Statistics Dashboard</h1>
+            <p class="lead">Comprehensive analysis of Canadian government grants and contributions across all years, provinces, and sectors.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Key Metrics Overview -->
+<div class="row mb-4">
+    <div class="col-lg-2 col-md-4 col-6 mb-3">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-file-contract"></i></h3>
+            <h2>{{ basic_stats.total_grants|intcomma }}</h2>
+            <p>Total Grants</p>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-6 mb-3">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-dollar-sign"></i></h3>
+            <h2>${{ basic_stats.total_value|floatformat:0|intcomma }}</h2>
+            <p>Total Value</p>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-6 mb-3">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-chart-bar"></i></h3>
+            <h2>${{ basic_stats.avg_value|floatformat:0|intcomma }}</h2>
+            <p>Average Grant</p>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-6 mb-3">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-star"></i></h3>
+            <h2>{{ basic_stats.major_funding_count|intcomma }}</h2>
+            <p>Major Funding (>$1M)</p>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-6 mb-3">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-exclamation-triangle"></i></h3>
+            <h2>{{ basic_stats.notable_count|intcomma }}</h2>
+            <p>Notable Grants</p>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-6 mb-3">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-crown"></i></h3>
+            <h2>${{ basic_stats.max_value|floatformat:0|intcomma }}</h2>
+            <p>Largest Grant</p>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <!-- Yearly Trends Chart -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line"></i> Yearly Funding Trends</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="yearlyTrendsChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Value Distribution Pie Chart -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Grant Size Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="valueDistributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Provincial Distribution Chart -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-map-marker-alt"></i> Funding by Province/Territory</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="provincialChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sector Analysis Chart -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-industry"></i> Top Sectors by Funding</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="sectorChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Recipients and Programs -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-building"></i> Top Recipients</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Organization</th>
+                                <th>Province</th>
+                                <th>Grants</th>
+                                <th>Total Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for recipient in top_recipients|slice:":10" %}
+                            <tr>
+                                <td>{{ recipient.recipient_legal_name|truncatechars:30 }}</td>
+                                <td><span class="badge bg-secondary">{{ recipient.recipient_province }}</span></td>
+                                <td>{{ recipient.grant_count }}</td>
+                                <td class="text-end currency">${{ recipient.total_value|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-project-diagram"></i> Top Programs by Funding</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="programChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top 10 Most Expensive Grants -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-trophy"></i> Top 10 Most Expensive Grants</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Grant Title</th>
+                                <th>Recipient</th>
+                                <th>Province</th>
+                                <th>Value</th>
+                                <th>Fiscal Year</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for grant in top_grants %}
+                            <tr>
+                                <td><strong>{{ forloop.counter }}</strong></td>
+                                <td>{{ grant.agreement_title_en|truncatechars:50 }}</td>
+                                <td>{{ grant.recipient_legal_name|truncatechars:40 }}</td>
+                                <td><span class="badge bg-primary">{{ grant.recipient_province }}</span></td>
+                                <td class="currency">${{ grant.agreement_value|floatformat:0|intcomma }}</td>
+                                <td>{{ grant.fiscal_year }}</td>
+                                <td><a href="{% url 'grant_detail' grant.pk %}" class="btn btn-sm btn-outline-primary">View</a></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notable Grant Categories -->
+<div class="row mb-4">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-flag"></i> Notable Grant Categories</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="notableCategoriesChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-users"></i> Recipients by Type</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="recipientTypeChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Summary Table -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-table"></i> Provincial Statistics Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Province/Territory</th>
+                                <th>Total Grants</th>
+                                <th>Total Value</th>
+                                <th>Average Grant</th>
+                                <th>Unique Recipients</th>
+                                <th>Value per Recipient</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for province in provincial_data %}
+                            <tr>
+                                <td><strong>{{ province.recipient_province }}</strong></td>
+                                <td>{{ province.count|intcomma }}</td>
+                                <td class="currency">${{ province.total_value|floatformat:0|intcomma }}</td>
+                                <td class="currency">${{ province.avg_value|floatformat:0|intcomma }}</td>
+                                <td>{{ province.unique_recipients|intcomma }}</td>
+                                <td class="currency">${{ province.value_per_recipient|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Debug data
+    console.log('Statistics data loaded:');
+    console.log('Yearly data:', {{ yearly_data|safe }});
+    console.log('Provincial data:', {{ provincial_data|safe }});
+    console.log('Sector data:', {{ sector_data|safe }});
+    console.log('Program data:', {{ program_data|safe }});
+    console.log('Notable breakdown:', {{ notable_breakdown|safe }});
+    console.log('Value distribution:', {{ value_distribution|safe }});
+    console.log('Recipient type data:', {{ recipient_type_data|safe }});
+    
+    // Yearly Trends Chart
+    const yearlyData = {{ yearly_data|safe }};
+    console.log('Creating yearly trends chart with data:', yearlyData);
+    const yearlyCtx = document.getElementById('yearlyTrendsChart').getContext('2d');
+    new Chart(yearlyCtx, {
+        type: 'line',
+        data: {
+            labels: yearlyData.map(d => d.fiscal_year),
+            datasets: [{
+                label: 'Total Value (Billions)',
+                data: yearlyData.map(d => d.total_value / 1000000000),
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1,
+                yAxisID: 'y',
+                fill: false
+            }, {
+                label: 'Grant Count',
+                data: yearlyData.map(d => d.count),
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                tension: 0.1,
+                yAxisID: 'y1',
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: { 
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            if (context.datasetIndex === 0) {
+                                return `${context.dataset.label}: $${context.parsed.y.toFixed(1)}B`;
+                            } else {
+                                return `${context.dataset.label}: ${context.parsed.y.toLocaleString()}`;
+                            }
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: { display: true, text: 'Value (Billions CAD)' },
+                    beginAtZero: true
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: { display: true, text: 'Number of Grants' },
+                    beginAtZero: true,
+                    grid: { drawOnChartArea: false }
+                }
+            }
+        }
+    });
+
+    // Value Distribution Chart
+    const valueDistData = {{ value_distribution|safe }};
+    console.log('Creating value distribution chart with data:', valueDistData);
+    const valueDistCtx = document.getElementById('valueDistributionChart').getContext('2d');
+    new Chart(valueDistCtx, {
+        type: 'doughnut',
+        data: {
+            labels: valueDistData.map(d => d.range),
+            datasets: [{
+                data: valueDistData.map(d => d.count),
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                    '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: { 
+                        padding: 15,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const data = valueDistData[context.dataIndex];
+                            return `${data.range}: ${data.count.toLocaleString()} grants (${data.percentage}%)`;
+                        },
+                        afterLabel: function(context) {
+                            const data = valueDistData[context.dataIndex];
+                            return `Total Value: $${(data.total_value/1000000).toFixed(0)}M`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Provincial Chart
+    const provincialData = {{ provincial_data|safe }};
+    console.log('Creating provincial chart with data:', provincialData);
+    const provincialCtx = document.getElementById('provincialChart').getContext('2d');
+    new Chart(provincialCtx, {
+        type: 'bar',
+        data: {
+            labels: provincialData.map(d => d.recipient_province),
+            datasets: [{
+                label: 'Total Value (Millions)',
+                data: provincialData.map(d => d.total_value / 1000000),
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: $${context.parsed.y.toFixed(0)}M`;
+                        }
+                    }
+                }
+            },
+            scales: { 
+                y: { 
+                    title: { display: true, text: 'Value (Millions CAD)' },
+                    beginAtZero: true
+                },
+                x: { 
+                    title: { display: true, text: 'Province/Territory' }
+                }
+            }
+        }
+    });
+
+    // Sector Chart
+    const sectorData = {{ sector_data|safe }};
+    console.log('Creating sector chart with data:', sectorData);
+    const sectorCtx = document.getElementById('sectorChart').getContext('2d');
+    new Chart(sectorCtx, {
+        type: 'bar',
+        data: {
+            labels: sectorData.map(d => d.naics_sector_en.length > 25 ? d.naics_sector_en.substring(0, 25) + '...' : d.naics_sector_en),
+            datasets: [{
+                label: 'Total Value (Millions)',
+                data: sectorData.map(d => d.total_value / 1000000),
+                backgroundColor: 'rgba(255, 159, 64, 0.8)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            scales: { 
+                x: { title: { display: true, text: 'Value (Millions CAD)' } },
+                y: { title: { display: true, text: 'Sector' } }
+            }
+        }
+    });
+
+    // Program Chart
+    const programData = {{ program_data|safe }};
+    console.log('Creating program chart with data:', programData);
+    const programCtx = document.getElementById('programChart').getContext('2d');
+    new Chart(programCtx, {
+        type: 'bar',
+        data: {
+            labels: programData.map(d => d.program_name_en.length > 30 ? d.program_name_en.substring(0, 30) + '...' : d.program_name_en),
+            datasets: [{
+                label: 'Total Value (Millions)',
+                data: programData.map(d => d.total_value / 1000000),
+                backgroundColor: 'rgba(153, 102, 255, 0.8)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: $${context.parsed.y.toFixed(0)}M`;
+                        }
+                    }
+                }
+            },
+            scales: { 
+                y: { 
+                    title: { display: true, text: 'Value (Millions CAD)' },
+                    beginAtZero: true
+                },
+                x: { 
+                    title: { display: true, text: 'Program' }
+                }
+            }
+        }
+    });
+
+    // Notable Categories Chart
+    const notableData = {{ notable_breakdown|safe }};
+    const notableCategories = Object.keys(notableData);
+    console.log('Creating notable categories chart with data:', notableData);
+    const notableCtx = document.getElementById('notableCategoriesChart').getContext('2d');
+    new Chart(notableCtx, {
+        type: 'bar',
+        data: {
+            labels: notableCategories,
+            datasets: [{
+                label: 'Count',
+                data: notableCategories.map(cat => notableData[cat].count),
+                backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                yAxisID: 'y'
+            }, {
+                label: 'Value (Millions)',
+                data: notableCategories.map(cat => notableData[cat].total_value / 1000000),
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: { 
+                    type: 'linear', 
+                    display: true, 
+                    position: 'left',
+                    title: { display: true, text: 'Grant Count' }
+                },
+                y1: { 
+                    type: 'linear', 
+                    display: true, 
+                    position: 'right',
+                    title: { display: true, text: 'Value (Millions CAD)' },
+                    grid: { drawOnChartArea: false }
+                }
+            }
+        }
+    });
+
+    // Recipient Type Chart
+    const recipientTypeData = {{ recipient_type_data|safe }};
+    console.log('Creating recipient type chart with data:', recipientTypeData);
+    const recipientTypeCtx = document.getElementById('recipientTypeChart').getContext('2d');
+    new Chart(recipientTypeCtx, {
+        type: 'pie',
+        data: {
+            labels: recipientTypeData.map(d => d.recipient_type === 'F' ? 'For-Profit' : d.recipient_type === 'N' ? 'Non-Profit' : 'Other'),
+            datasets: [{
+                data: recipientTypeData.map(d => d.total_value),
+                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: { padding: 20 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.parsed;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${context.label}: $${(value/1000000).toFixed(0)}M (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    console.log('All charts created successfully!');
+});
+
+// Add error handling
+window.addEventListener('error', function(e) {
+    console.error('JavaScript error:', e.error);
+    console.error('Error message:', e.message);
+    console.error('Error filename:', e.filename);
+    console.error('Error line:', e.lineno);
+});
+</script>
+{% endblock %}

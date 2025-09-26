@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ grant.title|truncatechars:50 }} - GAC Grant Detail{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'gac_grant_list' %}">Global Affairs Grants</a></li>
+                <li class="breadcrumb-item active">{{ grant.project_number }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h4><i class="fas fa-globe-americas"></i> International Development Grant</h4>
+            </div>
+            <div class="card-body">
+                <h1>{{ grant.title }}</h1>
+                
+                <div class="row mt-3 mb-3">
+                    <div class="col-md-6">
+                        <p><strong>Project Number:</strong> {{ grant.project_number }}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="badge 
+                                {% if grant.status == 'operational' %}bg-success
+                                {% elif grant.status == 'closed' %}bg-secondary  
+                                {% else %}bg-warning{% endif %}">
+                                {{ grant.get_status_display }}
+                            </span>
+                        </p>
+                        {% if grant.formatted_country_distribution %}
+                            <p><strong>Country/Region:</strong></p>
+                            <div class="ms-3">
+                                {% for country in grant.formatted_country_distribution %}
+                                    <div class="mb-1">
+                                        <i class="fas fa-flag text-primary me-1"></i>
+                                        <strong>{{ country.name }}</strong>
+                                        {% if country.percentage != '100%' %}
+                                            <span class="badge bg-light text-dark ms-1">{{ country.percentage }}</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p><strong>Country/Region:</strong> {{ grant.clean_country_display }}</p>
+                        {% endif %}
+                        {% if grant.formatted_regional_focus %}
+                            <p><strong>Regional Focus:</strong></p>
+                            <div class="ms-3">
+                                {% for region in grant.formatted_regional_focus %}
+                                    <div class="mb-1">
+                                        <i class="fas fa-map-marked-alt text-info me-1"></i>
+                                        <strong>{{ region.name }}</strong>
+                                        {% if region.percentage %}
+                                            <span class="badge bg-light text-dark ms-1">{{ region.percentage }}</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% elif grant.region %}
+                            <p><strong>Regional Focus:</strong> {{ grant.region }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Maximum Contribution:</strong> 
+                            <span class="h4 text-success">{{ grant.formatted_contribution }}</span>
+                        </p>
+                        {% if grant.start_date %}
+                            <p><strong>Start Date:</strong> {{ grant.start_date|date:"F d, Y" }}</p>
+                        {% endif %}
+                        {% if grant.end_date %}
+                            <p><strong>End Date:</strong> {{ grant.end_date|date:"F d, Y" }}</p>
+                        {% endif %}
+                        {% if grant.duration_years %}
+                            <p><strong>Duration:</strong> {{ grant.duration_years|floatformat:1 }} years</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <h5>Project Description</h5>
+                <div class="bg-light p-3 rounded">
+                    {{ grant.description|linebreaks }}
+                </div>
+
+                {% if grant.expected_results %}
+                <h5 class="mt-4">Expected Results</h5>
+                <div class="bg-light p-3 rounded">
+                    {{ grant.expected_results|linebreaks }}
+                </div>
+                {% endif %}
+
+                {% if grant.progress_and_results_achieved %}
+                <h5 class="mt-4">Progress & Results Achieved</h5>
+                <div class="bg-success bg-opacity-10 p-3 rounded">
+                    {{ grant.progress_and_results_achieved|linebreaks }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Key Information -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-info-circle"></i> Key Information</h6>
+            </div>
+            <div class="card-body">
+                {% if grant.executing_agency_partner %}
+                <p><strong>Executing Agency:</strong><br>
+                   <small>{{ grant.executing_agency_partner }}</small></p>
+                {% endif %}
+                
+                {% if grant.contributing_organization %}
+                <p><strong>Contributing Organization:</strong><br>
+                   <small>{{ grant.contributing_organization }}</small></p>
+                {% endif %}
+                
+                <p><strong>Reporting Organization:</strong><br>
+                   <small>{{ grant.reporting_organization }}</small></p>
+                
+                {% if grant.program_name %}
+                <p><strong>Program:</strong><br>
+                   <small>{{ grant.program_name }}</small></p>
+                {% endif %}
+                
+                <p><strong>Last Modified:</strong><br>
+                   <small>{{ grant.date_modified|date:"F d, Y" }}</small></p>
+            </div>
+        </div>
+
+        <!-- Development Classifications -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-tags"></i> Development Classifications</h6>
+            </div>
+            <div class="card-body">
+                {% if grant.formatted_dac_sector %}
+                    <p><strong>DAC Sector:</strong></p>
+                    <div class="ms-3">
+                        {% for sector in grant.formatted_dac_sector %}
+                            <div class="mb-1">
+                                <i class="fas fa-industry text-primary me-1"></i>
+                                <strong>{{ sector.name }}</strong>
+                                {% if sector.percentage %}
+                                    <span class="badge bg-light text-dark ms-1">{{ sector.percentage }}</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% elif grant.dac_sector %}
+                    <p><strong>DAC Sector:</strong><br>
+                       <small>{{ grant.dac_sector }}</small></p>
+                {% endif %}
+                
+                {% if grant.aid_type %}
+                <p><strong>Aid Type:</strong> <span class="badge bg-primary">{{ grant.aid_type }}</span></p>
+                {% endif %}
+                
+                {% if grant.collaboration_type %}
+                <p><strong>Collaboration:</strong> <span class="badge bg-info">{{ grant.collaboration_type }}</span></p>
+                {% endif %}
+                
+                {% if grant.finance_type %}
+                <p><strong>Finance Type:</strong> <span class="badge bg-success">{{ grant.finance_type }}</span></p>
+                {% endif %}
+                
+                {% if grant.selection_mechanism %}
+                <p><strong>Selection Mechanism:</strong><br>
+                   <small>{{ grant.selection_mechanism }}</small></p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Policy Markers -->
+        {% if grant.formatted_policy_markers %}
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-flag"></i> Policy Markers</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    {% for marker in grant.formatted_policy_markers %}
+                        <div class="col-12 mb-2">
+                            <div class="d-flex align-items-center">
+                                <i class="{{ marker.icon_class }} me-2" style="width: 20px;"></i>
+                                <span class="badge {{ marker.badge_class }} me-2">
+                                    {% if marker.level %}Level {{ marker.level }}{% else %}Standard{% endif %}
+                                </span>
+                                <strong>{{ marker.name }}</strong>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% if grant.is_major_funding %}
+                    <div class="mt-3">
+                        <span class="badge bg-danger"><i class="fas fa-money-bill-wave me-1"></i>Major Funding (>$1M)</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% elif grant.policy_markers %}
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-flag"></i> Policy Markers</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    {% if grant.has_gender_marker %}
+                        <span class="badge bg-warning text-dark me-1">Gender Equality</span>
+                    {% endif %}
+                    {% if grant.has_environment_marker %}
+                        <span class="badge bg-success me-1">Environmental Sustainability</span>
+                    {% endif %}
+                    {% if grant.has_governance_marker %}
+                        <span class="badge bg-primary me-1">Good Governance</span>
+                    {% endif %}
+                    {% if grant.is_major_funding %}
+                        <span class="badge bg-danger me-1">Major Funding</span>
+                    {% endif %}
+                </div>
+                <small class="text-muted">{{ grant.policy_markers }}</small>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Budget Breakdown -->
+        {% if grant.clean_budget_info %}
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-calculator"></i> Budget Breakdown</h6>
+            </div>
+            <div class="card-body">
+                {% for entry in grant.clean_budget_info %}
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar-alt me-1"></i>{{ entry.period }}
+                            </small>
+                            <span class="badge bg-light text-dark">{{ entry.amount }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% elif grant.budget %}
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-calculator"></i> Budget Information</h6>
+            </div>
+            <div class="card-body">
+                <small class="text-muted">Raw budget data available but unable to parse structure.</small>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Location Information -->
+        {% if grant.locations %}
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-map-marker-alt"></i> Geographic Information</h6>
+            </div>
+            <div class="card-body">
+                <small>{{ grant.locations|truncatechars:300 }}</small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6>Actions</h6>
+                        <a href="{% url 'gac_grant_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to GAC Grants
+                        </a>
+                        <a href="{% url 'gac_statistics' %}" class="btn btn-outline-info">
+                            <i class="fas fa-chart-bar"></i> View Statistics
+                        </a>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        {% if grant.clean_reference_id %}
+                        <small class="text-muted">
+                            <strong>Reference ID:</strong> {{ grant.clean_reference_id }}
+                        </small>
+                        {% elif grant.project_number %}
+                        <small class="text-muted">
+                            <strong>Project Number:</strong> {{ grant.project_number }}
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

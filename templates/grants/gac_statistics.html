@@ -1,0 +1,506 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Global Affairs Canada - Statistics{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+    .leaflet-popup-content {
+        font-size: 14px;
+        line-height: 1.4;
+    }
+    .leaflet-popup-content-wrapper {
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1><i class="fas fa-chart-bar"></i> Global Affairs Canada - Grant Statistics</h1>
+        <p class="lead text-muted">Comprehensive analysis of Canada's international development assistance</p>
+    </div>
+</div>
+
+<!-- Basic Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-globe-americas"></i></h3>
+            <h2>{{ total_grants|intcomma }}</h2>
+            <p>Total International Grants</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-dollar-sign"></i></h3>
+            <h2>${{ total_value|floatformat:0|intcomma }}</h2>
+            <p>Total Committed Value</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-chart-line"></i></h3>
+            <h2>${{ avg_value|floatformat:0|intcomma }}</h2>
+            <p>Average Grant Value</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-star"></i></h3>
+            <h2>{{ major_count|intcomma }}</h2>
+            <p>Major Funding (>$1M)</p>
+            <small class="text-light">${{ major_value|floatformat:0|intcomma }}</small>
+        </div>
+    </div>
+</div>
+
+<!-- Policy Markers Overview -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-warning">{{ gender_grants|intcomma }}</h3>
+                <p><i class="fas fa-equals"></i> Gender Equality Focus</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-success">{{ env_grants|intcomma }}</h3>
+                <p><i class="fas fa-leaf"></i> Environmental Sustainability</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-primary">{{ governance_grants|intcomma }}</h3>
+                <p><i class="fas fa-balance-scale"></i> Good Governance</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row mb-4">
+    <!-- Grant Status Distribution -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Grant Status Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statusChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Countries by Funding -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-globe"></i> Top Countries by Funding</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="countryChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Top Regions -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-map"></i> Regional Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="regionChart" width="800" height="400"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- World Choropleth Map -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-globe-americas"></i> World Funding Distribution</h5>
+                <small class="text-muted">Choropleth map showing Canadian funding by country</small>
+            </div>
+            <div class="card-body">
+                <div id="worldMap" style="height: 500px; width: 100%;"></div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        Darker colors indicate higher funding amounts. Click on a country for detailed information.
+                    </small>
+                    <div class="row mt-2">
+                        <div class="col-md-12">
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <span style="font-size: 12px;">Funding Level:</span>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <span style="width: 20px; height: 15px; background: #fee5d9; border: 1px solid #ddd;"></span>
+                                    <span style="font-size: 11px;">$0-1M</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <span style="width: 20px; height: 15px; background: #fcbba1; border: 1px solid #ddd;"></span>
+                                    <span style="font-size: 11px;">$1-10M</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <span style="width: 20px; height: 15px; background: #fc9272; border: 1px solid #ddd;"></span>
+                                    <span style="font-size: 11px;">$10-50M</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <span style="width: 20px; height: 15px; background: #fb6a4a; border: 1px solid #ddd;"></span>
+                                    <span style="font-size: 11px;">$50-100M</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <span style="width: 20px; height: 15px; background: #de2d26; border: 1px solid #ddd;"></span>
+                                    <span style="font-size: 11px;">$100M+</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <span style="width: 20px; height: 15px; background: #f0f0f0; border: 1px solid #ddd;"></span>
+                                    <span style="font-size: 11px;">No funding</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Tables -->
+<div class="row">
+    <!-- Top Countries Table -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-flag"></i> Top 15 Countries by Investment</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Country</th>
+                                <th>Grants</th>
+                                <th>Total Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="countriesTable">
+                            <!-- Will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Regions Table -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-map-marked-alt"></i> Top 10 Regions by Investment</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Region</th>
+                                <th>Grants</th>
+                                <th>Total Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="regionsTable">
+                            <!-- Will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Data from Django template
+    const statusData = {{ status_data|safe }};
+    const countryData = {{ country_data|safe }};
+    const regionData = {{ region_data|safe }};
+    
+    // Status Distribution Chart
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: statusData.map(d => d.status.charAt(0).toUpperCase() + d.status.slice(1)),
+            datasets: [{
+                data: statusData.map(d => d.total_value),
+                backgroundColor: ['#28a745', '#6c757d', '#ffc107'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: { padding: 15 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const status = statusData[context.dataIndex];
+                            return `${context.label}: ${status.count.toLocaleString()} grants ($${(status.total_value/1000000).toFixed(0)}M)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Top Countries Chart
+    const countryCtx = document.getElementById('countryChart').getContext('2d');
+    const topCountries = countryData.slice(0, 10);
+    new Chart(countryCtx, {
+        type: 'bar',
+        data: {
+            labels: topCountries.map(d => d.country),
+            datasets: [{
+                label: 'Total Value (Millions CAD)',
+                data: topCountries.map(d => d.total_value / 1000000),
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: true },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const country = topCountries[context.dataIndex];
+                            return `${context.dataset.label}: $${context.parsed.x.toFixed(0)}M (${country.count} grants)`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    title: { display: true, text: 'Value (Millions CAD)' },
+                    beginAtZero: true
+                },
+                y: { title: { display: true, text: 'Country' } }
+            }
+        }
+    });
+    
+    // Regional Chart
+    const regionCtx = document.getElementById('regionChart').getContext('2d');
+    const topRegions = regionData.slice(0, 12);
+    new Chart(regionCtx, {
+        type: 'bar',
+        data: {
+            labels: topRegions.map(d => d.region.length > 25 ? d.region.substring(0, 25) + '...' : d.region),
+            datasets: [{
+                label: 'Total Value (Millions CAD)',
+                data: topRegions.map(d => d.total_value / 1000000),
+                backgroundColor: 'rgba(255, 159, 64, 0.8)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const region = topRegions[context.dataIndex];
+                            return `${context.dataset.label}: $${context.parsed.y.toFixed(0)}M (${region.count} grants)`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    title: { display: true, text: 'Value (Millions CAD)' },
+                    beginAtZero: true
+                },
+                x: { 
+                    title: { display: true, text: 'Region' },
+                    ticks: { maxRotation: 45 }
+                }
+            }
+        }
+    });
+    
+    // Populate Countries Table
+    const countriesTableBody = document.getElementById('countriesTable');
+    countryData.slice(0, 15).forEach(country => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${country.country}</strong></td>
+            <td>${country.count.toLocaleString()}</td>
+            <td class="text-success">$${(country.total_value/1000000).toFixed(0)}M</td>
+        `;
+        countriesTableBody.appendChild(row);
+    });
+    
+    // Populate Regions Table
+    const regionsTableBody = document.getElementById('regionsTable');
+    regionData.slice(0, 10).forEach(region => {
+        const row = document.createElement('tr');
+        const regionName = region.region.length > 30 ? region.region.substring(0, 30) + '...' : region.region;
+        row.innerHTML = `
+            <td><strong>${regionName}</strong></td>
+            <td>${region.count.toLocaleString()}</td>
+            <td class="text-success">$${(region.total_value/1000000).toFixed(0)}M</td>
+        `;
+        regionsTableBody.appendChild(row);
+    });
+    
+    console.log('GAC Statistics charts initialized successfully!');
+    
+    // Initialize World Map
+    initWorldMap();
+});
+
+// World Choropleth Map
+function initWorldMap() {
+    // Create map
+    const map = L.map('worldMap').setView([20, 0], 2);
+    
+    // Add base map
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Prepare country funding data
+    const fundingData = {};
+    countryData.forEach(item => {
+        // Clean country name and normalize for matching
+        let countryName = item.country.trim();
+        // Handle common variations
+        if (countryName === 'Democratic Republic of the Congo') countryName = 'Democratic Republic of Congo';
+        if (countryName === 'Republic of the Congo') countryName = 'Republic of Congo';
+        if (countryName === 'United States of America') countryName = 'United States';
+        if (countryName === 'United Kingdom') countryName = 'United Kingdom';
+        if (countryName === 'Russian Federation') countryName = 'Russia';
+        
+        fundingData[countryName] = {
+            value: item.total_value,
+            count: item.count,
+            displayName: item.country
+        };
+    });
+    
+    // Color scale function
+    function getColor(value) {
+        if (!value || value === 0) return '#f0f0f0';  // No funding
+        if (value < 1000000) return '#fee5d9';        // <$1M
+        if (value < 10000000) return '#fcbba1';       // $1-10M  
+        if (value < 50000000) return '#fc9272';       // $10-50M
+        if (value < 100000000) return '#fb6a4a';      // $50-100M
+        return '#de2d26';                             // $100M+
+    }
+    
+    // Style function for countries
+    function style(feature) {
+        const countryName = feature.properties.NAME;
+        const funding = fundingData[countryName];
+        return {
+            fillColor: getColor(funding ? funding.value : 0),
+            weight: 1,
+            opacity: 0.8,
+            color: '#666',
+            fillOpacity: 0.7
+        };
+    }
+    
+    // Highlight feature on mouseover
+    function highlightFeature(e) {
+        const layer = e.target;
+        layer.setStyle({
+            weight: 2,
+            color: '#333',
+            fillOpacity: 0.9
+        });
+        layer.bringToFront();
+    }
+    
+    // Reset highlight on mouseout
+    function resetHighlight(e) {
+        geojsonLayer.resetStyle(e.target);
+    }
+    
+    // Click handler
+    function zoomToFeature(e) {
+        map.fitBounds(e.target.getBounds());
+    }
+    
+    // Add popup and event handlers to each feature
+    function onEachFeature(feature, layer) {
+        const countryName = feature.properties.NAME;
+        const funding = fundingData[countryName];
+        
+        let popupContent = `<strong>${countryName}</strong><br>`;
+        if (funding) {
+            popupContent += `
+                <i class="fas fa-dollar-sign text-success"></i> $${(funding.value/1000000).toFixed(1)}M CAD<br>
+                <i class="fas fa-file-alt text-primary"></i> ${funding.count.toLocaleString()} grants
+            `;
+        } else {
+            popupContent += `<em class="text-muted">No recorded funding</em>`;
+        }
+        
+        layer.bindPopup(popupContent);
+        layer.on({
+            mouseover: highlightFeature,
+            mouseout: resetHighlight,
+            click: zoomToFeature
+        });
+    }
+    
+    // Load world countries GeoJSON and add to map
+    let geojsonLayer;
+    fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson')
+        .then(response => response.json())
+        .then(data => {
+            geojsonLayer = L.geoJSON(data, {
+                style: style,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+            
+            console.log('World map loaded successfully!');
+        })
+        .catch(error => {
+            console.error('Error loading world map data:', error);
+            document.getElementById('worldMap').innerHTML = 
+                '<div class="alert alert-warning text-center m-4">' +
+                '<i class="fas fa-exclamation-triangle"></i> ' +
+                'Unable to load world map data. Please check your internet connection.' +
+                '</div>';
+        });
+}
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+{% endblock %}

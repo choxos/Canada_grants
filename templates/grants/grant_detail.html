@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ grant.agreement_title_en|truncatechars:50 }} - Canadian Grants Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h4>{{ grant.agreement_title_en }}</h4>
+                    <div>
+                        {% if grant.is_major_funding %}
+                            <span class="badge major-funding-badge">Major Funding</span>
+                        {% endif %}
+                        {% if grant.is_notable %}
+                            <span class="badge notable-badge">Notable</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h5 class="currency">${{ grant.agreement_value|floatformat:2|intcomma }}</h5>
+                        <p class="text-muted">Grant Value</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>{{ grant.fiscal_year }}</h6>
+                        <p class="text-muted">Fiscal Year</p>
+                    </div>
+                </div>
+                
+                <h6>Description</h6>
+                <p>{{ grant.description_en|default:"No description available." }}</p>
+                
+                {% if grant.expected_results_en %}
+                    <h6>Expected Results</h6>
+                    <p>{{ grant.expected_results_en }}</p>
+                {% endif %}
+                
+                {% if grant.notable_reason %}
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-flag"></i> Why This Grant is Notable</h6>
+                        <p class="mb-0">{{ grant.notable_reason }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if similar_grants %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Similar Grants</h5>
+                </div>
+                <div class="card-body">
+                    {% for similar in similar_grants %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <div>
+                                <h6><a href="{% url 'grant_detail' similar.pk %}" class="text-decoration-none">
+                                    {{ similar.agreement_title_en|truncatechars:60 }}
+                                </a></h6>
+                                <small class="text-muted">{{ similar.recipient_legal_name|truncatechars:40 }}</small>
+                            </div>
+                            <span class="fw-bold">${{ similar.agreement_value|floatformat:0|intcomma }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Grant Details</h5>
+            </div>
+            <div class="card-body">
+                <h6>Recipient</h6>
+                <p>{{ grant.recipient_legal_name }}</p>
+                {% if grant.recipient_operating_name and grant.recipient_operating_name != grant.recipient_legal_name %}
+                    <p class="small text-muted">Operating as: {{ grant.recipient_operating_name }}</p>
+                {% endif %}
+                
+                <h6>Location</h6>
+                <p>{{ grant.recipient_city_en }}, {{ grant.recipient_province }} {{ grant.recipient_postal_code }}</p>
+                
+                <h6>Agreement Details</h6>
+                <p><strong>Number:</strong> {{ grant.agreement_number|default:"N/A" }}</p>
+                <p><strong>Reference:</strong> {{ grant.reference_number }}</p>
+                
+                {% if grant.agreement_start_date %}
+                    <h6>Timeline</h6>
+                    <p><strong>Start:</strong> {{ grant.agreement_start_date }}</p>
+                    {% if grant.agreement_end_date %}
+                        <p><strong>End:</strong> {{ grant.agreement_end_date }}</p>
+                    {% endif %}
+                {% endif %}
+                
+                <h6>Program</h6>
+                <p>{{ grant.program_name_en }}</p>
+                {% if grant.program_purpose_en %}
+                    <p class="small text-muted">{{ grant.program_purpose_en|truncatechars:150 }}</p>
+                {% endif %}
+                
+                {% if grant.naics_sector_en %}
+                    <h6>Sector</h6>
+                    <p>{{ grant.naics_sector_en }} ({{ grant.naics_identifier }})</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-calculator"></i> Your Contribution</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Calculate how much you personally contributed to this grant through your taxes.</p>
+                <a href="{% url 'tax_calculator' %}" class="btn btn-primary w-100">
+                    <i class="fas fa-calculator"></i> Calculate My Share
+                </a>
+                
+                <div id="grantShareResult" class="mt-3" style="display: none;">
+                    <div class="alert alert-info">
+                        <h6>Your Personal Contribution</h6>
+                        <p class="mb-0">$<span id="userShare">0</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-share-alt"></i> Share This Grant</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="copyToClipboard()">
+                        <i class="fas fa-copy"></i> Copy Link
+                    </button>
+                    <a href="https://twitter.com/intent/tweet?text={{ grant.agreement_title_en|urlencode }}&url={{ request.build_absolute_uri }}" 
+                       target="_blank" class="btn btn-outline-info">
+                        <i class="fab fa-twitter"></i> Share on Twitter
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{% url 'grant_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to All Grants
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyToClipboard() {
+    navigator.clipboard.writeText(window.location.href).then(function() {
+        alert('Link copied to clipboard!');
+    });
+}
+
+// Check if user has calculated taxes and show their share
+async function checkUserShare() {
+    try {
+        const response = await fetch(`/api/grant-share/{{ grant.id }}/`);
+        if (response.ok) {
+            const data = await response.json();
+            document.getElementById('userShare').textContent = data.user_share.toFixed(2);
+            document.getElementById('grantShareResult').style.display = 'block';
+        }
+    } catch (error) {
+        // User hasn't calculated taxes yet
+    }
+}
+
+// Check on page load
+checkUserShare();
+</script>
+{% endblock %}

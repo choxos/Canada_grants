@@ -1,0 +1,629 @@
+{% extends 'base.html' %}
+
+{% block title %}API Documentation - Canadian Government Grants Tracker{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="jumbotron bg-dark text-white p-4 rounded">
+            <h1 class="display-4"><i class="fas fa-code"></i> API Documentation</h1>
+            <p class="lead">Complete REST API reference for accessing Canadian government grants data programmatically.</p>
+            <p class="mb-0">Base URL: <code class="bg-secondary p-1 rounded">{{ request.build_absolute_uri|slice:":-1" }}</code></p>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Start -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-rocket"></i> Quick Start</h5>
+            </div>
+            <div class="card-body">
+                <p>All API endpoints return JSON data. No authentication is required for read-only access.</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Example Request (cURL):</h6>
+                        <pre class="bg-light p-2 rounded"><code>curl -X GET "{{ request.build_absolute_uri }}api/stats/"</code></pre>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Example Request (JavaScript):</h6>
+                        <pre class="bg-light p-2 rounded"><code>fetch('{{ request.build_absolute_uri }}api/stats/')
+  .then(response => response.json())
+  .then(data => console.log(data));</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API Endpoints -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="fas fa-list"></i> Available Endpoints</h2>
+    </div>
+</div>
+
+<!-- Basic Stats API -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><span class="badge bg-success">GET</span> /api/stats/</h5>
+                <p class="mb-0">Get basic grant statistics and aggregations</p>
+            </div>
+            <div class="card-body">
+                <h6>Description:</h6>
+                <p>Returns summary statistics including total grants, total value, and breakdowns by province, year, and program.</p>
+                
+                <h6>Parameters:</h6>
+                <p class="text-muted">None</p>
+                
+                <h6>Response Example:</h6>
+                <pre class="bg-light p-2 rounded small"><code>{
+    "total_grants": 45832,
+    "total_value": 15487394729.50,
+    "by_province": [
+        {
+            "recipient_province": "ON",
+            "count": 15240,
+            "total_value": 5847392847.23
+        }
+    ],
+    "by_year": [
+        {
+            "fiscal_year": "2023-24",
+            "count": 8934,
+            "total_value": 3245789234.56
+        }
+    ],
+    "top_programs": [
+        {
+            "program_name_en": "Industrial Research Assistance Program",
+            "count": 3421,
+            "total_value": 2398475829.34
+        }
+    ]
+}</code></pre>
+                
+                <h6>Try it out:</h6>
+                <button class="btn btn-primary" onclick="testAPI('/api/stats/', 'statsResult')">
+                    <i class="fas fa-play"></i> Test API
+                </button>
+                <div id="statsResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search API -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><span class="badge bg-success">GET</span> /api/search/</h5>
+                <p class="mb-0">Search and filter grants with advanced parameters</p>
+            </div>
+            <div class="card-body">
+                <h6>Description:</h6>
+                <p>Search through grants with text queries and apply various filters. Supports pagination and sorting.</p>
+                
+                <h6>Parameters:</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>search</code></td>
+                                <td>string</td>
+                                <td>Search in title, recipient, description, program</td>
+                                <td><code>technology</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>province</code></td>
+                                <td>string</td>
+                                <td>Filter by province/territory</td>
+                                <td><code>ON</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>fiscal_year</code></td>
+                                <td>string</td>
+                                <td>Filter by fiscal year</td>
+                                <td><code>2023-24</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>min_value</code></td>
+                                <td>number</td>
+                                <td>Minimum grant value</td>
+                                <td><code>100000</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>max_value</code></td>
+                                <td>number</td>
+                                <td>Maximum grant value</td>
+                                <td><code>5000000</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>recipient_type</code></td>
+                                <td>string</td>
+                                <td>F (For-profit), N (Non-profit)</td>
+                                <td><code>F</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>is_major</code></td>
+                                <td>boolean</td>
+                                <td>Filter major funding (>$1M)</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>is_notable</code></td>
+                                <td>boolean</td>
+                                <td>Filter notable/controversial grants</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>sort</code></td>
+                                <td>string</td>
+                                <td>Sort field (add - for desc)</td>
+                                <td><code>-agreement_value</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>limit</code></td>
+                                <td>number</td>
+                                <td>Results per page (max 1000)</td>
+                                <td><code>50</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>offset</code></td>
+                                <td>number</td>
+                                <td>Pagination offset</td>
+                                <td><code>0</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <h6>Response Example:</h6>
+                <pre class="bg-light p-2 rounded small"><code>{
+    "count": 234,
+    "limit": 50,
+    "offset": 0,
+    "results": [
+        {
+            "id": 12345,
+            "reference_number": "172-2023-2024-Q1-123456",
+            "recipient_legal_name": "University of Toronto",
+            "recipient_province": "ON",
+            "recipient_city_en": "Toronto",
+            "recipient_type": "N",
+            "agreement_title_en": "Advanced AI Research Initiative",
+            "agreement_value": 2500000.00,
+            "description_en": "Research into advanced artificial intelligence applications...",
+            "agreement_start_date": "2023-04-01",
+            "agreement_end_date": "2026-03-31",
+            "program_name_en": "Industrial Research Assistance Program",
+            "naics_sector_en": "Educational services",
+            "fiscal_year": "2023-24",
+            "is_major_funding": true,
+            "is_notable": false,
+            "notable_reason": ""
+        }
+    ]
+}</code></pre>
+                
+                <h6>Try it out:</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control mb-2" id="searchQuery" placeholder="Search term (e.g., 'technology')">
+                        <select class="form-select mb-2" id="searchProvince">
+                            <option value="">All Provinces</option>
+                            <option value="AB">Alberta</option>
+                            <option value="BC">British Columbia</option>
+                            <option value="ON">Ontario</option>
+                            <option value="QC">Quebec</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <input type="number" class="form-control mb-2" id="searchMinValue" placeholder="Min value (e.g., 100000)">
+                        <select class="form-select mb-2" id="searchSort">
+                            <option value="-agreement_value">Highest Value First</option>
+                            <option value="agreement_value">Lowest Value First</option>
+                            <option value="recipient_legal_name">Recipient A-Z</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="testSearchAPI()">
+                    <i class="fas fa-search"></i> Test Search API
+                </button>
+                <div id="searchResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recipients API -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><span class="badge bg-success">GET</span> /api/recipients/</h5>
+                <p class="mb-0">Get recipient analysis and top recipients</p>
+            </div>
+            <div class="card-body">
+                <h6>Description:</h6>
+                <p>Returns analysis of grant recipients including top recipients by funding, breakdown by type, and provincial distribution.</p>
+                
+                <h6>Parameters:</h6>
+                <p class="text-muted">None</p>
+                
+                <h6>Response Example:</h6>
+                <pre class="bg-light p-2 rounded small"><code>{
+    "top_recipients": [
+        {
+            "recipient_legal_name": "University of Toronto",
+            "total_value": 125487293.50,
+            "grant_count": 342,
+            "avg_value": 366913.45
+        }
+    ],
+    "by_type": [
+        {
+            "recipient_type": "N",
+            "count": 28394,
+            "total_value": 8945738291.23,
+            "avg_value": 314982.45
+        }
+    ],
+    "by_province": [
+        {
+            "recipient_province": "ON",
+            "count": 15240,
+            "total_value": 5847392847.23,
+            "unique_recipients": 3421
+        }
+    ]
+}</code></pre>
+                
+                <h6>Try it out:</h6>
+                <button class="btn btn-primary" onclick="testAPI('/api/recipients/', 'recipientsResult')">
+                    <i class="fas fa-play"></i> Test API
+                </button>
+                <div id="recipientsResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Comprehensive Stats API -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><span class="badge bg-success">GET</span> /api/comprehensive-stats/</h5>
+                <p class="mb-0">Get comprehensive statistics and analytics</p>
+            </div>
+            <div class="card-body">
+                <h6>Description:</h6>
+                <p>Returns detailed statistics including value distributions, yearly analysis, sector breakdowns, and notable grant categories.</p>
+                
+                <h6>Parameters:</h6>
+                <p class="text-muted">None</p>
+                
+                <h6>Response Sections:</h6>
+                <ul>
+                    <li><code>basic_stats</code> - Overview statistics (total, average, min, max values)</li>
+                    <li><code>yearly_analysis</code> - Year-over-year trends</li>
+                    <li><code>provincial_analysis</code> - Provincial breakdowns</li>
+                    <li><code>sector_analysis</code> - Industry sector analysis</li>
+                    <li><code>program_analysis</code> - Program effectiveness</li>
+                    <li><code>value_distribution</code> - Grant size distribution</li>
+                    <li><code>notable_breakdown</code> - Notable grant categories</li>
+                </ul>
+                
+                <h6>Try it out:</h6>
+                <button class="btn btn-primary" onclick="testAPI('/api/comprehensive-stats/', 'comprehensiveResult')">
+                    <i class="fas fa-play"></i> Test API
+                </button>
+                <div id="comprehensiveResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tax Calculator API -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><span class="badge bg-warning">POST</span> /api/calculate/</h5>
+                <p class="mb-0">Calculate personal tax contribution to grants</p>
+            </div>
+            <div class="card-body">
+                <h6>Description:</h6>
+                <p>Calculate how much of a user's taxes goes to specific grants based on their income and spending.</p>
+                
+                <h6>Request Body:</h6>
+                <pre class="bg-light p-2 rounded small"><code>{
+    "annual_income": 75000,
+    "gst_eligible_spending": 25000,
+    "input_mode": "annual",
+    "taxpayer_since_year": 2018
+}</code></pre>
+                
+                <h6>Response Example:</h6>
+                <pre class="bg-light p-2 rounded small"><code>{
+    "success": true,
+    "calculation": {
+        "annual_income": 75000.00,
+        "taxpayer_since_year": 2018,
+        "federal_income_tax": 11327.50,
+        "gst_paid": 1250.00,
+        "total_tax_contribution": 12577.50,
+        "total_tax_contribution_formatted": "$12,577.50",
+        "grants_portion_of_taxes_formatted": "$314.44",
+        "revenue_share_percentage": 0.00002924
+    },
+    "grant_shares": [
+        {
+            "id": 12345,
+            "title": "Advanced AI Research",
+            "total_value": 2500000.00,
+            "user_share": 1.83,
+            "user_share_formatted": "$1.83",
+            "recipient": "University of Toronto"
+        }
+    ],
+    "yearly_breakdown": [
+        {
+            "year": 2023,
+            "user_share": 45.23,
+            "user_share_formatted": "$45.23",
+            "grant_count": 1247,
+            "top_projects": [...]
+        }
+    ],
+    "future_projections": {
+        "continuing_only": {...},
+        "with_new_projects": {...},
+        "historical_average": 38.45
+    },
+    "total_grants_share_formatted": "$384.52"
+}</code></pre>
+                
+                <h6>Try it out:</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="number" class="form-control mb-2" id="calcIncome" placeholder="Annual income" value="75000">
+                        <input type="number" class="form-control mb-2" id="calcSpending" placeholder="GST eligible spending" value="25000">
+                        <select class="form-select mb-2" id="calcTaxpayerSince">
+                            <option value="2018" selected>Taxpayer since 2018</option>
+                            <option value="2020">Taxpayer since 2020</option>
+                            <option value="2015">Taxpayer since 2015</option>
+                            <option value="2010">Taxpayer since 2010</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-warning" onclick="testCalculatorAPI()">
+                            <i class="fas fa-calculator"></i> Test Enhanced Calculator API
+                        </button>
+                        <small class="form-text text-muted">
+                            Tests sophisticated year-by-year calculations with project duration analysis
+                        </small>
+                    </div>
+                </div>
+                <div id="calculatorResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rate Limits and Usage -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-tachometer-alt"></i> Rate Limits</h5>
+            </div>
+            <div class="card-body">
+                <p>No rate limits currently enforced, but please be respectful:</p>
+                <ul>
+                    <li>Maximum 1000 results per API call</li>
+                    <li>Reasonable request frequency</li>
+                    <li>Cache results when possible</li>
+                    <li>Use appropriate pagination for large datasets</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Data Notes</h5>
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li>Data updated regularly from official sources</li>
+                    <li>All monetary values in Canadian dollars</li>
+                    <li>Dates in ISO format (YYYY-MM-DD)</li>
+                    <li>Province codes use standard 2-letter abbreviations</li>
+                    <li>Notable grants identified by keyword analysis</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Codes -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-exclamation-triangle"></i> Error Responses</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Status</th>
+                                <th>Description</th>
+                                <th>Example Response</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>400</td>
+                                <td>Bad Request</td>
+                                <td>Invalid parameters</td>
+                                <td><code>{"error": "Invalid input: min_value must be a number"}</code></td>
+                            </tr>
+                            <tr>
+                                <td>404</td>
+                                <td>Not Found</td>
+                                <td>Resource not found</td>
+                                <td><code>{"error": "Grant not found"}</code></td>
+                            </tr>
+                            <tr>
+                                <td>405</td>
+                                <td>Method Not Allowed</td>
+                                <td>Wrong HTTP method</td>
+                                <td><code>{"error": "POST method required"}</code></td>
+                            </tr>
+                            <tr>
+                                <td>500</td>
+                                <td>Internal Server Error</td>
+                                <td>Server error</td>
+                                <td><code>{"error": "Calculation error: Division by zero"}</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function testAPI(endpoint, resultId) {
+    const resultDiv = document.getElementById(resultId);
+    resultDiv.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+    
+    fetch(endpoint)
+        .then(response => response.json())
+        .then(data => {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>Success!</strong> API response received.
+                </div>
+                <pre class="bg-light p-2 rounded small"><code>${JSON.stringify(data, null, 2)}</code></pre>
+            `;
+        })
+        .catch(error => {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> ${error.message}
+                </div>
+            `;
+        });
+}
+
+function testSearchAPI() {
+    const query = document.getElementById('searchQuery').value;
+    const province = document.getElementById('searchProvince').value;
+    const minValue = document.getElementById('searchMinValue').value;
+    const sort = document.getElementById('searchSort').value;
+    
+    const params = new URLSearchParams();
+    if (query) params.append('search', query);
+    if (province) params.append('province', province);
+    if (minValue) params.append('min_value', minValue);
+    if (sort) params.append('sort', sort);
+    params.append('limit', '5');
+    
+    const endpoint = `/api/search/?${params.toString()}`;
+    testAPI(endpoint, 'searchResult');
+}
+
+function testCalculatorAPI() {
+    const income = document.getElementById('calcIncome').value;
+    const spending = document.getElementById('calcSpending').value;
+    const taxpayerSince = document.getElementById('calcTaxpayerSince').value;
+    
+    const resultDiv = document.getElementById('calculatorResult');
+    resultDiv.innerHTML = '<div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div>';
+    
+    fetch('/api/calculate/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            annual_income: parseFloat(income),
+            gst_eligible_spending: parseFloat(spending),
+            input_mode: 'annual',
+            taxpayer_since_year: parseInt(taxpayerSince)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        resultDiv.innerHTML = `
+            <div class="alert alert-success">
+                <strong>Success!</strong> Tax calculation completed.
+            </div>
+            <pre class="bg-light p-2 rounded small"><code>${JSON.stringify(data, null, 2)}</code></pre>
+        `;
+    })
+    .catch(error => {
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>Error:</strong> ${error.message}
+            </div>
+        `;
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+
+<style>
+.card-header h5 .badge {
+    font-size: 0.7em;
+    margin-right: 10px;
+}
+code {
+    color: #e83e8c;
+    background-color: #f8f9fa;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+}
+pre code {
+    color: inherit;
+    background-color: inherit;
+    padding: 0;
+}
+</style>
+{% endblock %}

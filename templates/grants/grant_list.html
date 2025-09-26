@@ -1,0 +1,369 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}All Grants - Canadian Grants Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-list"></i> All Government Grants</h2>
+    <div>
+        <a href="{% url 'major_funding' %}" class="btn btn-outline-primary">Major Funding</a>
+        <a href="{% url 'notable_grants' %}" class="btn btn-outline-warning">Notable Grants</a>
+    </div>
+</div>
+
+<!-- Advanced Search and Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6><i class="fas fa-filter"></i> Advanced Search & Filters</h6>
+    </div>
+    <div class="card-body">
+        <form method="get" id="searchForm">
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Search Terms</label>
+                    <input type="text" class="form-control" name="search" 
+                           placeholder="Search in title, recipient, description..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Province</label>
+                    <select name="province" class="form-select">
+                        <option value="">All Provinces</option>
+                        {% for province in provinces %}
+                            <option value="{{ province }}" {% if current_filters.province == province %}selected{% endif %}>
+                                {{ province }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Fiscal Year</label>
+                    <select name="fiscal_year" class="form-select">
+                        <option value="">All Years</option>
+                        {% for year in fiscal_years %}
+                            <option value="{{ year }}" {% if current_filters.fiscal_year == year %}selected{% endif %}>
+                                {{ year }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label">Min Value ($)</label>
+                    <input type="number" class="form-control" name="min_value" 
+                           placeholder="0" value="{{ current_filters.min_value }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Max Value ($)</label>
+                    <input type="number" class="form-control" name="max_value" 
+                           placeholder="No limit" value="{{ current_filters.max_value }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Program</label>
+                    <select name="program" class="form-select">
+                        <option value="">All Programs</option>
+                        {% for program in programs %}
+                            <option value="{{ program }}" {% if current_filters.program == program %}selected{% endif %}>
+                                {{ program|truncatechars:40 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Recipient Type</label>
+                    <select name="recipient_type" class="form-select">
+                        <option value="">All Types</option>
+                        <option value="F" {% if current_filters.recipient_type == 'F' %}selected{% endif %}>For-Profit</option>
+                        <option value="N" {% if current_filters.recipient_type == 'N' %}selected{% endif %}>Non-Profit</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'grant_list' %}" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-times"></i> Clear Filters
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-success w-100" onclick="calculateMyShare()">
+                        <i class="fas fa-calculator"></i> My Tax Share
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-info w-100" onclick="exportResults()">
+                        <i class="fas fa-download"></i> Export Results
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Sorting -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="text-muted">
+        Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} grants
+    </p>
+    <div class="btn-group" role="group">
+        <a href="?{{ request.GET.urlencode }}&sort=-agreement_value" 
+           class="btn btn-outline-secondary {% if current_filters.sort == '-agreement_value' %}active{% endif %}">
+            Value ↓
+        </a>
+        <a href="?{{ request.GET.urlencode }}&sort=agreement_value" 
+           class="btn btn-outline-secondary {% if current_filters.sort == 'agreement_value' %}active{% endif %}">
+            Value ↑
+        </a>
+        <a href="?{{ request.GET.urlencode }}&sort=-agreement_start_date" 
+           class="btn btn-outline-secondary {% if current_filters.sort == '-agreement_start_date' %}active{% endif %}">
+            Date ↓
+        </a>
+    </div>
+</div>
+
+<!-- Grants List -->
+<div class="row">
+    {% for grant in page_obj %}
+        <div class="col-12 mb-3">
+            <div class="card grant-card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5>
+                                <a href="{% url 'grant_detail' grant.pk %}" class="text-decoration-none">
+                                    {{ grant.agreement_title_en|truncatechars:80 }}
+                                </a>
+                                {% if grant.is_major_funding %}
+                                    <span class="badge major-funding-badge ms-2">Major Funding</span>
+                                {% endif %}
+                                {% if grant.is_notable %}
+                                    <span class="badge notable-badge ms-2">Notable</span>
+                                {% endif %}
+                            </h5>
+                            <p class="text-muted mb-1">
+                                <i class="fas fa-building"></i> {{ grant.recipient_legal_name|truncatechars:60 }}
+                            </p>
+                            <p class="text-muted mb-1">
+                                <i class="fas fa-map-marker-alt"></i> {{ grant.recipient_city_en }}, {{ grant.recipient_province }}
+                                <span class="ms-3"><i class="fas fa-calendar"></i> {{ grant.fiscal_year }}</span>
+                            </p>
+                            <p class="small">{{ grant.description_en|truncatechars:150 }}</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <h4 class="currency">${{ grant.agreement_value|floatformat:0|intcomma }}</h4>
+                            <p class="text-muted">{{ grant.program_name_en|truncatechars:40 }}</p>
+                            {% if grant.agreement_start_date %}
+                                <small class="text-muted">{{ grant.agreement_start_date }} - {{ grant.agreement_end_date|default:"Ongoing" }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <h5>No grants found</h5>
+                <p>Try adjusting your search criteria or filters.</p>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+    <nav aria-label="Grants pagination">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?{{ request.GET.urlencode }}&page=1">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+            </li>
+            
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ page_obj.paginator.num_pages }}">Last</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+
+<!-- Tax Calculator Modal -->
+<div class="modal fade" id="taxCalculatorModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Calculate Your Tax Contribution</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="quickTaxForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Annual Income (before tax)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="modalAnnualIncome" 
+                                       placeholder="75000" min="0" step="1000" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Annual GST-Eligible Spending</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="modalGstSpending" 
+                                       placeholder="30000" min="0" step="1000" required>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Calculate</button>
+                </form>
+                
+                <div id="modalResults" class="mt-4" style="display: none;">
+                    <h6>Your Tax Contribution</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card bg-light text-center">
+                                <div class="card-body">
+                                    <small>Federal Tax</small>
+                                    <h6 id="modalFederalTax">$0</h6>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light text-center">
+                                <div class="card-body">
+                                    <small>GST Paid</small>
+                                    <h6 id="modalGstPaid">$0</h6>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-primary text-white text-center">
+                                <div class="card-body">
+                                    <small>Total Tax</small>
+                                    <h6 id="modalTotalTax">$0</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <p><strong>Your share of visible grants:</strong> $<span id="modalVisibleShare">0</span></p>
+                        <p><strong>Your share of all grants:</strong> $<span id="modalTotalShare">0</span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="{% url 'tax_calculator' %}" class="btn btn-success">Full Calculator</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function calculateMyShare() {
+    new bootstrap.Modal(document.getElementById('taxCalculatorModal')).show();
+}
+
+function exportResults() {
+    // Get current search parameters
+    const params = new URLSearchParams(window.location.search);
+    params.set('export', 'csv');
+    window.open('?' + params.toString(), '_blank');
+}
+
+document.getElementById('quickTaxForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const income = document.getElementById('modalAnnualIncome').value;
+    const gstSpending = document.getElementById('modalGstSpending').value;
+    
+    if (!income || !gstSpending) {
+        alert('Please fill in both fields');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/calculate/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                annual_income: parseFloat(income),
+                gst_eligible_spending: parseFloat(gstSpending)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const calc = data.calculation;
+            
+            document.getElementById('modalFederalTax').textContent = '$' + calc.federal_income_tax.toLocaleString();
+            document.getElementById('modalGstPaid').textContent = '$' + calc.gst_paid.toLocaleString();
+            document.getElementById('modalTotalTax').textContent = '$' + calc.total_tax_contribution.toLocaleString();
+            
+            // Calculate share of visible grants
+            const visibleGrantsValue = calculateVisibleGrantsValue();
+            const visibleShare = (visibleGrantsValue * calc.revenue_share_percentage / 100);
+            document.getElementById('modalVisibleShare').textContent = visibleShare.toFixed(2);
+            document.getElementById('modalTotalShare').textContent = data.total_grants_share.toLocaleString();
+            
+            document.getElementById('modalResults').style.display = 'block';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Calculation failed: ' + error.message);
+    }
+});
+
+function calculateVisibleGrantsValue() {
+    // Sum up all visible grants on the page
+    let total = 0;
+    document.querySelectorAll('.currency').forEach(element => {
+        const value = parseFloat(element.textContent.replace(/[$,]/g, ''));
+        if (!isNaN(value)) total += value;
+    });
+    return total;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

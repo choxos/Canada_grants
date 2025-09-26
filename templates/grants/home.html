@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Home - Canadian Government Grants Tracker{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white p-5 rounded">
+            <h1 class="display-4">Canadian Government Grants Tracker</h1>
+            <p class="lead">Discover how your tax dollars are being spent through government grants and contributions. 
+               Explore major funding, notable projects, and calculate your personal contribution to each grant.</p>
+            <a class="btn btn-light btn-lg" href="{% url 'tax_calculator' %}" role="button">
+                <i class="fas fa-calculator"></i> Calculate Your Tax Contribution
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Combined Overview -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-globe-americas"></i></h3>
+            <h2>{{ total_count|intcomma }}</h2>
+            <p>Total Grants (All Programs)</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-dollar-sign"></i></h3>
+            <h2>${{ total_value|floatformat:0|intcomma }}</h2>
+            <p>Combined Value</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card text-center p-3">
+            <h3><i class="fas fa-chart-line"></i></h3>
+            <h2>${{ avg_grant_value|floatformat:0|intcomma }}</h2>
+            <p>Average Grant Value</p>
+        </div>
+    </div>
+</div>
+
+<!-- Domestic vs International Breakdown -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="fas fa-hand-holding-usd"></i> Domestic Grants & Contributions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary">{{ domestic_grants|intcomma }}</h4>
+                        <p class="small">Total Grants</p>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">${{ domestic_value|floatformat:0|intcomma }}</h4>
+                        <p class="small">Total Value</p>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <a href="{% url 'grant_list' %}" class="btn btn-primary btn-sm me-2">View All</a>
+                    <a href="{% url 'statistics' %}" class="btn btn-outline-primary btn-sm">Statistics</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5><i class="fas fa-globe-americas"></i> Global Affairs Canada</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-info">{{ gac_grants|intcomma }}</h4>
+                        <p class="small">International Grants</p>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">${{ gac_value|floatformat:0|intcomma }}</h4>
+                        <p class="small">Total Value</p>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <a href="{% url 'gac_grant_list' %}" class="btn btn-info btn-sm me-2">View All</a>
+                    <a href="{% url 'gac_statistics' %}" class="btn btn-outline-info btn-sm">Statistics</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-money-bill-wave"></i> Recent Major Funding</h5>
+            </div>
+            <div class="card-body">
+                {% for grant in recent_major %}
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 border-bottom">
+                        <div>
+                            <h6><a href="{{ grant.url }}" class="text-decoration-none">
+                                {{ grant.title|truncatechars:60 }}
+                            </a></h6>
+                            <small class="text-muted">
+                                {% if grant.type == 'gac' %}
+                                    <i class="fas fa-globe-americas text-info"></i> {{ grant.recipient|truncatechars:40 }}
+                                {% else %}
+                                    <i class="fas fa-building text-primary"></i> {{ grant.recipient|truncatechars:40 }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge {{ grant.badge_class }}">${{ grant.value|floatformat:0|intcomma }}</span>
+                            {% if grant.type == 'gac' %}
+                                <br><small class="text-info">International</small>
+                            {% else %}
+                                <br><small class="text-primary">Domestic</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-muted">No major funding grants found.</p>
+                {% endfor %}
+                <a href="{% url 'major_funding' %}" class="btn btn-outline-primary btn-sm me-2">Domestic Major Funding</a>
+                <a href="{% url 'gac_grant_list' %}?major_only=1" class="btn btn-outline-info btn-sm">GAC Major Funding</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-flag"></i> Notable Grants</h5>
+            </div>
+            <div class="card-body">
+                {% for grant in notable_grants %}
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 border-bottom">
+                        <div>
+                            <h6><a href="{{ grant.url }}" class="text-decoration-none">
+                                {{ grant.title|truncatechars:60 }}
+                            </a></h6>
+                            <small class="text-muted">
+                                {% if grant.type == 'gac' %}
+                                    <i class="fas fa-globe-americas text-info"></i> {{ grant.reason|truncatechars:40 }}
+                                {% else %}
+                                    <i class="fas fa-flag text-warning"></i> {{ grant.reason|truncatechars:40 }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge {{ grant.badge_class }}">${{ grant.value|floatformat:0|intcomma }}</span>
+                            {% if grant.type == 'gac' %}
+                                <br><small class="text-info">International</small>
+                            {% else %}
+                                <br><small class="text-warning">Domestic</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-muted">No notable grants found.</p>
+                {% endfor %}
+                <a href="{% url 'notable_grants' %}" class="btn btn-outline-warning btn-sm me-2">Domestic Notable</a>
+                <a href="{% url 'gac_grant_list' %}?policy_marker=gender" class="btn btn-outline-success btn-sm">GAC Gender/Environment</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-search"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-2 col-md-4 col-6 mb-2">
+                        <a href="{% url 'grant_list' %}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-list"></i> Browse All Grants
+                        </a>
+                    </div>
+                    <div class="col-lg-2 col-md-4 col-6 mb-2">
+                        <a href="{% url 'major_funding' %}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-star"></i> Major Funding
+                        </a>
+                    </div>
+                    <div class="col-lg-2 col-md-4 col-6 mb-2">
+                        <a href="{% url 'notable_grants' %}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-flag"></i> Notable Grants
+                        </a>
+                    </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-2">
+            <a href="{% url 'statistics' %}" class="btn btn-outline-secondary w-100">
+                <i class="fas fa-chart-line"></i> Domestic Stats
+            </a>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-2">
+            <a href="{% url 'gac_grant_list' %}" class="btn btn-outline-info w-100">
+                <i class="fas fa-globe-americas"></i> Global Affairs
+            </a>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-2">
+            <a href="{% url 'gac_statistics' %}" class="btn btn-outline-secondary w-100">
+                <i class="fas fa-chart-bar"></i> GAC Stats
+            </a>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-2">
+            <a href="{% url 'tax_calculator' %}" class="btn btn-outline-success w-100">
+                <i class="fas fa-calculator"></i> Tax Calculator
+            </a>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-2">
+            <a href="{% url 'api_documentation' %}" class="btn btn-outline-dark w-100">
+                <i class="fas fa-code"></i> API Documentation
+            </a>
+        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

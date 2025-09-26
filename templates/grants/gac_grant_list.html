@@ -1,0 +1,350 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Global Affairs Canada Grants{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-globe-americas"></i> Global Affairs Canada - International Development Grants</h2>
+    <div>
+        <a href="?major_only=1" class="btn btn-outline-primary">Major Funding</a>
+        <a href="{% url 'gac_statistics' %}" class="btn btn-outline-info">Statistics</a>
+    </div>
+</div>
+
+<!-- Advanced Search and Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6><i class="fas fa-filter"></i> Advanced Search & Filters</h6>
+    </div>
+    <div class="card-body">
+        <form method="get" id="searchForm">
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Search Terms</label>
+                    <input type="text" class="form-control" name="search" 
+                           placeholder="Search in title, description, country, partner..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Country</label>
+                    <select name="country" class="form-select">
+                        <option value="">All Countries</option>
+                        {% for country in countries %}
+                            <option value="{{ country }}" {% if current_filters.country == country %}selected{% endif %}>
+                                {{ country }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label">Min Value ($)</label>
+                    <input type="number" class="form-control" name="min_value" 
+                           placeholder="0" value="{{ current_filters.min_value }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Max Value ($)</label>
+                    <input type="number" class="form-control" name="max_value" 
+                           placeholder="No limit" value="{{ current_filters.max_value }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Region</label>
+                    <select name="region" class="form-select">
+                        <option value="">All Regions</option>
+                        {% for region in regions %}
+                            <option value="{{ region }}" {% if current_filters.region == region %}selected{% endif %}>
+                                {{ region|truncatechars:30 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Program</label>
+                    <select name="program" class="form-select">
+                        <option value="">All Programs</option>
+                        {% for program in programs %}
+                            <option value="{{ program }}" {% if current_filters.program == program %}selected{% endif %}>
+                                {{ program|truncatechars:40 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label">DAC Sector</label>
+                    <select name="dac_sector" class="form-select">
+                        <option value="">All Sectors</option>
+                        {% for sector in dac_sectors %}
+                            <option value="{{ sector }}" {% if current_filters.dac_sector == sector %}selected{% endif %}>
+                                {{ sector }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Policy Focus</label>
+                    <select name="policy_marker" class="form-select">
+                        <option value="">All Policies</option>
+                        <option value="gender" {% if current_filters.policy_marker == 'gender' %}selected{% endif %}>Gender Equality</option>
+                        <option value="environment" {% if current_filters.policy_marker == 'environment' %}selected{% endif %}>Environmental</option>
+                        <option value="governance" {% if current_filters.policy_marker == 'governance' %}selected{% endif %}>Governance</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Size Filter</label>
+                    <select name="major_only" class="form-select">
+                        <option value="">All Sizes</option>
+                        <option value="1" {% if current_filters.major_only %}selected{% endif %}>Major Funding Only (>$1M)</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Sort By</label>
+                    <select name="sort" class="form-select">
+                        <option value="-maximum_contribution" {% if current_filters.sort == '-maximum_contribution' %}selected{% endif %}>Highest Value</option>
+                        <option value="maximum_contribution" {% if current_filters.sort == 'maximum_contribution' %}selected{% endif %}>Lowest Value</option>
+                        <option value="-start_date" {% if current_filters.sort == '-start_date' %}selected{% endif %}>Newest First</option>
+                        <option value="start_date" {% if current_filters.sort == 'start_date' %}selected{% endif %}>Oldest First</option>
+                        <option value="title" {% if current_filters.sort == 'title' %}selected{% endif %}>Title A-Z</option>
+                        <option value="country" {% if current_filters.sort == 'country' %}selected{% endif %}>Country A-Z</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'gac_grant_list' %}" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-times"></i> Clear Filters
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-success w-100" onclick="calculateMyGACShare()">
+                        <i class="fas fa-calculator"></i> My Tax Share
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-info w-100" onclick="exportGACResults()">
+                        <i class="fas fa-download"></i> Export Results
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results Summary -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="text-muted">
+        Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count|intcomma }} international grants
+        {% if search_query %} matching "{{ search_query }}"{% endif %}
+        {% if current_filters.status %} • Status: {{ current_filters.status|title }}{% endif %}
+        {% if current_filters.country %} • Country: {{ current_filters.country }}{% endif %}
+        {% if current_filters.major_only %} • Major Funding Only{% endif %}
+    </p>
+    <div class="btn-group" role="group">
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort=-maximum_contribution" 
+           class="btn btn-outline-secondary {% if current_filters.sort == '-maximum_contribution' %}active{% endif %}">
+            Value ↓
+        </a>
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort=maximum_contribution" 
+           class="btn btn-outline-secondary {% if current_filters.sort == 'maximum_contribution' %}active{% endif %}">
+            Value ↑
+        </a>
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort=-start_date" 
+           class="btn btn-outline-secondary {% if current_filters.sort == '-start_date' %}active{% endif %}">
+            Date ↓
+        </a>
+    </div>
+</div>
+
+<!-- Grants List -->
+{% for grant in page_obj %}
+<div class="card grant-card mb-3">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-9">
+                <h5 class="card-title">
+                    <a href="{% url 'gac_grant_detail' grant.pk %}" class="text-decoration-none">
+                        {{ grant.title }}
+                    </a>
+                </h5>
+                
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <small class="text-muted">
+                            <i class="fas fa-globe"></i> <strong>{{ grant.primary_country }}</strong>
+                            {% if grant.clean_regional_focus %} • {{ grant.clean_regional_focus|truncatechars:40 }}{% endif %}
+                        </small>
+                    </div>
+                    <div class="col-sm-6">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar"></i>
+                            {% if grant.start_date %}{{ grant.start_date|date:"M Y" }}{% else %}TBD{% endif %}
+                            {% if grant.end_date %} - {{ grant.end_date|date:"M Y" }}{% endif %}
+                            {% if grant.duration_years %} • {{ grant.duration_years|floatformat:1 }} years{% endif %}
+                        </small>
+                    </div>
+                </div>
+                
+                <p class="card-text">{{ grant.description|truncatechars:200 }}</p>
+                
+                {% if grant.executing_agency_partner %}
+                <p class="text-muted small">
+                    <i class="fas fa-handshake"></i> <strong>Partner:</strong> {{ grant.executing_agency_partner|truncatechars:80 }}
+                </p>
+                {% endif %}
+                
+                {% if grant.clean_dac_sector %}
+                <p class="small text-info">
+                    <i class="fas fa-industry"></i> <strong>Sectors:</strong> {{ grant.clean_dac_sector|truncatechars:100 }}
+                </p>
+                {% elif grant.dac_sector %}
+                <p class="small text-info">
+                    <i class="fas fa-industry"></i> <strong>Sectors:</strong> {{ grant.dac_sector|truncatechars:120 }}
+                </p>
+                {% endif %}
+            </div>
+            <div class="col-md-3 text-end">
+                <h4 class="text-success mb-2">{{ grant.formatted_contribution }}</h4>
+                
+                <div class="mb-3">
+                    <span class="badge 
+                        {% if grant.status == 'operational' %}bg-success
+                        {% elif grant.status == 'closed' %}bg-secondary  
+                        {% else %}bg-warning text-dark{% endif %} mb-1">
+                        {{ grant.get_status_display }}
+                    </span>
+                    
+                    {% if grant.is_major_funding %}
+                        <span class="badge bg-danger mb-1">Major Funding</span>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-2">
+                    {% if grant.has_gender_marker %}
+                        <span class="badge bg-warning text-dark me-1 mb-1">Gender Equality</span>
+                    {% endif %}
+                    {% if grant.has_environment_marker %}
+                        <span class="badge bg-success me-1 mb-1">Environmental</span>
+                    {% endif %}
+                    {% if grant.has_governance_marker %}
+                        <span class="badge bg-primary me-1 mb-1">Governance</span>
+                    {% endif %}
+                </div>
+                
+                <small class="text-muted">
+                    <i class="fas fa-file-alt"></i> {{ grant.project_number }}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% empty %}
+<div class="alert alert-warning">
+    <h5><i class="fas fa-search"></i> No grants found</h5>
+    <p>Try adjusting your search criteria or filters to find what you're looking for.</p>
+    <a href="{% url 'gac_grant_list' %}" class="btn btn-outline-primary">View All Grants</a>
+</div>
+{% endfor %}
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<nav aria-label="Grant pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </a>
+            </li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">
+                    Next <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Tax Calculator Modal -->
+<div class="modal fade" id="gacTaxCalculatorModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-calculator"></i> Your Tax Contribution to International Development</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="gacTaxCalculatorContent">
+                    <p>Calculate how much of your tax dollars go toward Canada's international development assistance...</p>
+                    <div class="text-center">
+                        <button class="btn btn-primary" onclick="openTaxCalculator('gac')">
+                            <i class="fas fa-calculator"></i> Open Tax Calculator
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function calculateMyGACShare() {
+    // Show modal or redirect to tax calculator with GAC focus
+    const modal = new bootstrap.Modal(document.getElementById('gacTaxCalculatorModal'));
+    modal.show();
+}
+
+function openTaxCalculator(type) {
+    // Redirect to tax calculator with GAC parameter
+    window.location.href = '{% url "tax_calculator" %}?focus=' + type;
+}
+
+function exportGACResults() {
+    // Export current filtered results
+    const params = new URLSearchParams(window.location.search);
+    params.set('export', 'csv');
+    window.open('?' + params.toString());
+}
+
+// Auto-submit form on select change for better UX
+document.querySelectorAll('#searchForm select').forEach(select => {
+    select.addEventListener('change', function() {
+        if (this.name !== 'sort') {  // Don't auto-submit for sort changes
+            this.form.submit();
+        }
+    });
+});
+</script>
+
+{% endblock %}
